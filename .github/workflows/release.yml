@@ -1,5 +1,9 @@
 name: Publish Release Draft
 on: workflow_dispatch
+
+permissions:
+  contents: write
+
 jobs:
 
   # Before we do anything, run the existing test suite..
