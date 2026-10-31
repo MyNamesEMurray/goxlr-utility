@@ -1,8 +1,8 @@
 use goxlr_ipc::DaemonStatus;
 use goxlr_ui::{AppWindow, wire, with_app};
+use slint::PlatformError;
 use slint::platform::software_renderer::{MinimalSoftwareWindow, RepaintBufferType};
 use slint::platform::{Platform, WindowAdapter};
-use slint::PlatformError;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
@@ -17,7 +17,11 @@ impl Platform for P {
 }
 
 fn main() {
-    slint::platform::set_platform(Box::new(P(MinimalSoftwareWindow::new(RepaintBufferType::NewBuffer), Instant::now()))).unwrap();
+    slint::platform::set_platform(Box::new(P(
+        MinimalSoftwareWindow::new(RepaintBufferType::NewBuffer),
+        Instant::now(),
+    )))
+    .unwrap();
     let ui = AppWindow::new().unwrap();
     let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
     wire(&ui, tx);
@@ -28,7 +32,15 @@ fn main() {
     with_app(|a| a.refresh());
     with_app(|a| a.event("imp.sel.0", 0.0, ""));
     with_app(|a| a.event("imp.go", 0.0, ""));
-    for f in ["p/Stream.goxlr", "p/Gaming.goxlr", "p/Chill.goxlr", "m/Podcast.goxlrMicProfile"] {
-        println!("{f}: {:?}", std::fs::read_to_string(format!("/tmp/fx/{f}")).map(|s| s.trim().to_string()));
+    for f in [
+        "p/Stream.goxlr",
+        "p/Gaming.goxlr",
+        "p/Chill.goxlr",
+        "m/Podcast.goxlrMicProfile",
+    ] {
+        println!(
+            "{f}: {:?}",
+            std::fs::read_to_string(format!("/tmp/fx/{f}")).map(|s| s.trim().to_string())
+        );
     }
 }

@@ -142,6 +142,7 @@ assets = [
     ["../target/release/goxlr-client", "usr/bin/", "755"],
     ["../target/release/goxlr-defaults", "usr/bin/", "755"],
     ["../target/release/goxlr-launcher", "usr/bin/", "755"],
+    ["../target/release/goxlr-ui", "usr/bin/", "755"],
     ["../50-goxlr.rules", "etc/udev/rules.d/", "644"],
     ["../daemon/resources/goxlr-utility.png", "usr/share/icons/hicolor/48x48/apps/", "644"],
     ["../daemon/resources/goxlr-utility-large.png", "usr/share/pixmaps/goxlr-utility.png", "644"],
@@ -171,6 +172,7 @@ assets = [
     { source = "../target/release/goxlr-client", dest = "/usr/bin/goxlr-client", mode = "0755" },
     { source = "../target/release/goxlr-defaults", dest = "/usr/bin/goxlr-defaults", mode = "0755" },
     { source = "../target/release/goxlr-launcher", dest = "/usr/bin/goxlr-launcher", mode = "0755" },
+    { source = "../target/release/goxlr-ui", dest = "/usr/bin/goxlr-ui", mode = "0755" },
     { source = "../50-goxlr.rules", dest = "/etc/udev/rules.d/50-goxlr.rules", mode = "0644" },
     { source = "../daemon/resources/goxlr-utility.png", dest = "/usr/share/icons/hicolor/48x48/apps/goxlr-utility.png", mode = "0644" },
     { source = "../daemon/resources/goxlr-utility-large.png", dest = "/usr/share/pixmaps/goxlr-utility.png", mode = "0644" },
@@ -201,6 +203,7 @@ auto-req = "no"
 # required, this leaves us with dbus and pulseaudio libs :)
 dbus-libs = ">= 1.9.14"
 pulseaudio-libs = ">= 10.0"
+fontconfig = "*"
 
 # Seriously Fedora?
 "libspeechd.so.2()(64bit)" = "*"
@@ -213,3 +216,4 @@ release = "suse"
 libdbus-1-3 = ">= 1.9.14"
 libpulse0 = ">= 10.0"
 speech-dispatcher = ">= 0.7"
+fontconfig = "*"

@@ -9,7 +9,10 @@ pub struct Found {
 
 impl Found {
     pub fn name(&self) -> String {
-        self.path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default()
+        self.path
+            .file_stem()
+            .map(|s| s.to_string_lossy().into_owned())
+            .unwrap_or_default()
     }
 
     pub fn file_name(&self) -> Option<std::ffi::OsString> {
@@ -28,7 +31,9 @@ pub struct ImportState {
 
 pub fn candidates() -> Vec<PathBuf> {
     let mut out = vec![];
-    let home = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")).map(PathBuf::from);
+    let home = std::env::var_os("USERPROFILE")
+        .or_else(|| std::env::var_os("HOME"))
+        .map(PathBuf::from);
     if let Some(h) = home {
         out.push(h.join("Documents").join("GoXLR"));
         out.push(h.join("OneDrive").join("Documents").join("GoXLR"));
@@ -57,16 +62,22 @@ fn kind(p: &Path) -> Option<bool> {
 }
 
 fn walk(dir: &Path, depth: u8, out: &mut Vec<Found>) {
-    let Ok(rd) = std::fs::read_dir(dir) else { return };
+    let Ok(rd) = std::fs::read_dir(dir) else {
+        return;
+    };
     for e in rd.flatten() {
         let p = e.path();
         let Ok(t) = e.file_type() else { continue };
         if t.is_dir() && depth > 0 {
             walk(&p, depth - 1, out);
-        } else if t.is_file() {
-            if let Some(mic) = kind(&p) {
-                out.push(Found { path: p, mic, selected: true });
-            }
+        } else if t.is_file()
+            && let Some(mic) = kind(&p)
+        {
+            out.push(Found {
+                path: p,
+                mic,
+                selected: true,
+            });
         }
     }
 }
@@ -74,7 +85,7 @@ fn walk(dir: &Path, depth: u8, out: &mut Vec<Found>) {
 pub fn scan(dir: &Path) -> Vec<Found> {
     let mut out = vec![];
     walk(dir, 2, &mut out);
-    out.sort_by(|a, b| (a.mic, a.name().to_lowercase()).cmp(&(b.mic, b.name().to_lowercase())));
+    out.sort_by_key(|a| (a.mic, a.name().to_lowercase()));
     out
 }
 
@@ -137,7 +148,10 @@ mod tests {
         std::fs::write(p.join("Stream.goxlr"), b"old").unwrap();
         assert!(dest_exists(&found[1], &p, &m) || dest_exists(&found[0], &p, &m));
         let msg = run(&found, false, &p, &m);
-        assert!(msg.contains("Imported 2") && msg.contains("skipped 1"), "{msg}");
+        assert!(
+            msg.contains("Imported 2") && msg.contains("skipped 1"),
+            "{msg}"
+        );
         assert_eq!(std::fs::read(p.join("Stream.goxlr")).unwrap(), b"old");
         let msg = run(&found, true, &p, &m);
         assert!(msg.contains("Imported 3"), "{msg}");

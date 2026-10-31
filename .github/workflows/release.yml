@@ -19,6 +19,9 @@ jobs:
     needs: [ verify, get_version, build ]
     runs-on: ubuntu-22.04
     steps:
+      - name: Check out Repository
+        uses: actions/checkout@v4
+
       # Download the previously generated artifacts..
       - name: Download Artifacts
         uses: actions/download-artifact@v4
@@ -32,9 +35,9 @@ jobs:
         with:
           name: Release ${{ needs.get_version.outputs.version }}
           tag_name: v${{ needs.get_version.outputs.version }}
-          body: 'Put Changelog Here!'
+          body_path: RELEASE_NOTES.md
           draft: true
-          prerelease: true
+          prerelease: false
           fail_on_unmatched_files: true
           files: |
             ./debian-artifact/goxlr-utility_${{ needs.get_version.outputs.version }}-1_amd64.deb

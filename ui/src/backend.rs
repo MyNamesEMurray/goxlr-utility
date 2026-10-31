@@ -14,7 +14,11 @@ const SOCKET_PATH: &str = "/tmp/goxlr.socket";
 const NAMED_PIPE: &str = "@goxlr.socket";
 
 pub async fn connect() -> Result<LocalSocketStream> {
-    let name = if cfg!(windows) { NAMED_PIPE.to_ns_name::<GenericNamespaced>() } else { SOCKET_PATH.to_fs_name::<GenericFilePath>() };
+    let name = if cfg!(windows) {
+        NAMED_PIPE.to_ns_name::<GenericNamespaced>()
+    } else {
+        SOCKET_PATH.to_fs_name::<GenericFilePath>()
+    };
     Ok(LocalSocketStream::connect(name?).await?)
 }
 
@@ -22,20 +26,28 @@ pub type Sock = Socket<DaemonResponse, DaemonRequest>;
 
 pub async fn request(sock: &mut Sock, req: DaemonRequest) -> Result<DaemonResponse> {
     sock.send(req).await?;
-    sock.read().await.ok_or_else(|| anyhow!("daemon closed the connection"))?.map_err(Into::into)
+    sock.read()
+        .await
+        .ok_or_else(|| anyhow!("daemon closed the connection"))?
+        .map_err(Into::into)
 }
 
 fn ui_call(f: impl FnOnce(&mut crate::app::App) + Send + 'static) {
-    let _ = slint::invoke_from_event_loop(move || APP.with(|a| {
-        if let Some(app) = a.borrow_mut().as_mut() {
-            f(app);
-        }
-    }));
+    let _ = slint::invoke_from_event_loop(move || {
+        APP.with(|a| {
+            if let Some(app) = a.borrow_mut().as_mut() {
+                f(app);
+            }
+        })
+    });
 }
 
 pub fn spawn(rx: UnboundedReceiver<Msg>, _ui: Weak<AppWindow>) {
     std::thread::spawn(move || {
-        let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().expect("tokio runtime");
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("tokio runtime");
         rt.block_on(run(rx));
     });
 }

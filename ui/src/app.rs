@@ -3,7 +3,9 @@ use crate::model::{C, nth, pretty, sync};
 use crate::pages::{self, Ctx, LOG_LEVELS, PATHS};
 use crate::table;
 use crate::{AppWindow, Ctl, Strip};
-use goxlr_ipc::{DaemonCommand, DaemonStatus, FirmwareSource, GoXLRCommand as G, LogLevel, MixerStatus};
+use goxlr_ipc::{
+    DaemonCommand, DaemonStatus, FirmwareSource, GoXLRCommand as G, LogLevel, MixerStatus,
+};
 use goxlr_types::*;
 use slint::{ComponentHandle, Model, ModelRc, SharedString, Timer, TimerMode, VecModel, Weak};
 use std::collections::HashMap;
@@ -11,6 +13,8 @@ use std::rc::Rc;
 use std::time::{Duration, Instant};
 use strum::IntoEnumIterator;
 use tokio::sync::mpsc::UnboundedSender;
+
+type Matrix = (Vec<String>, Vec<String>, Vec<Vec<i32>>);
 
 pub enum Msg {
     Cmd(String, G),
@@ -91,7 +95,14 @@ impl App {
     }
 
     fn apply_tabs(&self, ui: &AppWindow) {
-        let t = |p: u8| ModelRc::new(VecModel::from(pages::tabs(p).into_iter().map(SharedString::from).collect::<Vec<_>>()));
+        let t = |p: u8| {
+            ModelRc::new(VecModel::from(
+                pages::tabs(p)
+                    .into_iter()
+                    .map(SharedString::from)
+                    .collect::<Vec<_>>(),
+            ))
+        };
         ui.set_mic_tabs(t(2));
         ui.set_fx_tabs(t(3));
         ui.set_sampler_tabs(t(4));
@@ -122,7 +133,11 @@ impl App {
         if let Some(st) = &st {
             let mut serials: Vec<&String> = st.mixers.keys().collect();
             serials.sort();
-            if self.serial.as_ref().is_none_or(|s| !st.mixers.contains_key(s)) {
+            if self
+                .serial
+                .as_ref()
+                .is_none_or(|s| !st.mixers.contains_key(s))
+            {
                 self.serial = serials.first().map(|s| s.to_string());
             }
         }
@@ -143,7 +158,9 @@ impl App {
     }
 
     fn mixer(&self) -> Option<&MixerStatus> {
-        self.status.as_ref().and_then(|s| self.serial.as_ref().and_then(|k| s.mixers.get(k)))
+        self.status
+            .as_ref()
+            .and_then(|s| self.serial.as_ref().and_then(|k| s.mixers.get(k)))
     }
 
     pub fn refresh(&mut self) {
@@ -159,7 +176,11 @@ impl App {
                 self.scan_import();
             }
         }
-        let want_mic = if page == 0 || page == 2 { self.serial.clone().filter(|_| self.status.is_some()) } else { None };
+        let want_mic = if page == 0 || page == 2 {
+            self.serial.clone().filter(|_| self.status.is_some())
+        } else {
+            None
+        };
         if want_mic != self.last_mic {
             let _ = self.tx.send(Msg::Mic(want_mic.clone()));
             self.last_mic = want_mic;
@@ -170,27 +191,42 @@ impl App {
             return;
         };
         let m = self.mixer();
-        ui.set_device_text(m.map_or(String::new(), |m| format!("{}  /  {}", m.profile_name, m.mic_profile_name)).into());
+        ui.set_device_text(
+            m.map_or(String::new(), |m| {
+                format!("{}  /  {}", m.profile_name, m.mic_profile_name)
+            })
+            .into(),
+        );
 
         let mut strips: Option<Vec<Strip>> = None;
-        let mut matrix: Option<(Vec<String>, Vec<String>, Vec<Vec<i32>>)> = None;
+        let mut matrix: Option<Matrix> = None;
         let rows: Vec<C> = match m {
             None if page == 7 => pages::settings(st, None, self.confirm.as_deref(), tab),
-            None => vec![C::note("No GoXLR detected. Plug in a device and it will appear here.")],
+            None => vec![C::note(
+                "No GoXLR detected. Plug in a device and it will appear here.",
+            )],
             Some(m) => {
-                let c = Ctx { st, m, confirm: self.confirm.as_deref(), imp: &self.imp };
+                let c = Ctx {
+                    st,
+                    m,
+                    confirm: self.confirm.as_deref(),
+                    imp: &self.imp,
+                };
                 match page {
                     0 => {
                         strips = Some(
                             ChannelName::iter()
                                 .map(|ch| {
-                                    let f = FaderName::iter().find(|f| m.fader_status[*f].channel == ch);
+                                    let f = FaderName::iter()
+                                        .find(|f| m.fader_status[*f].channel == ch);
                                     Strip {
                                         key: ch.to_string().into(),
                                         name: pretty(&ch.to_string()).into(),
                                         fader: f.map_or(String::new(), |f| f.to_string()).into(),
                                         volume: m.levels.volumes[ch] as f32,
-                                        muted: f.is_some_and(|f| m.fader_status[f].mute_state != MuteState::Unmuted),
+                                        muted: f.is_some_and(|f| {
+                                            m.fader_status[f].mute_state != MuteState::Unmuted
+                                        }),
                                     }
                                 })
                                 .collect(),
@@ -221,7 +257,9 @@ impl App {
                 self.strips.set_vec(new);
             } else {
                 for (i, s) in new.into_iter().enumerate() {
-                    if self.strips.row_data(i).as_ref() != Some(&s) && !skip(&format!("strip.{}", s.key)) {
+                    if self.strips.row_data(i).as_ref() != Some(&s)
+                        && !skip(&format!("strip.{}", s.key))
+                    {
                         self.strips.set_row_data(i, s);
                     }
                 }
@@ -229,11 +267,25 @@ impl App {
         }
         if let Some((inputs, outputs, rows)) = matrix {
             if self.inputs.row_count() == 0 {
-                self.inputs.set_vec(inputs.into_iter().map(SharedString::from).collect::<Vec<_>>());
-                self.outputs.set_vec(outputs.into_iter().map(SharedString::from).collect::<Vec<_>>());
+                self.inputs.set_vec(
+                    inputs
+                        .into_iter()
+                        .map(SharedString::from)
+                        .collect::<Vec<_>>(),
+                );
+                self.outputs.set_vec(
+                    outputs
+                        .into_iter()
+                        .map(SharedString::from)
+                        .collect::<Vec<_>>(),
+                );
             }
             if rows != self.prev_matrix && !skip("route") {
-                self.matrix.set_vec(rows.iter().map(|r| ModelRc::new(VecModel::from(r.clone()))).collect::<Vec<_>>());
+                self.matrix.set_vec(
+                    rows.iter()
+                        .map(|r| ModelRc::new(VecModel::from(r.clone())))
+                        .collect::<Vec<_>>(),
+                );
                 self.prev_matrix = rows;
             }
         }
@@ -241,7 +293,11 @@ impl App {
 
     fn scan_import(&mut self) {
         let path = self.imp.path.trim().to_string();
-        self.imp.files = if path.is_empty() { vec![] } else { import::scan(std::path::Path::new(&path)) };
+        self.imp.files = if path.is_empty() {
+            vec![]
+        } else {
+            import::scan(std::path::Path::new(&path))
+        };
         self.imp.scanned = !path.is_empty();
         self.imp.msg.clear();
     }
@@ -255,13 +311,22 @@ impl App {
             ["imp", "scan"] => self.scan_import(),
             ["imp", "over"] => self.imp.overwrite = value > 0.5,
             ["imp", "sel", i] => {
-                if let Some(f) = i.parse::<usize>().ok().and_then(|i| self.imp.files.get_mut(i)) {
+                if let Some(f) = i
+                    .parse::<usize>()
+                    .ok()
+                    .and_then(|i| self.imp.files.get_mut(i))
+                {
                     f.selected = value > 0.5;
                 }
             }
             ["imp", "go"] => {
                 if let Some(st) = &self.status {
-                    self.imp.msg = import::run(&self.imp.files, self.imp.overwrite, &st.paths.profile_directory, &st.paths.mic_profile_directory);
+                    self.imp.msg = import::run(
+                        &self.imp.files,
+                        self.imp.overwrite,
+                        &st.paths.profile_directory,
+                        &st.paths.mic_profile_directory,
+                    );
                 }
             }
             _ => {}
@@ -293,12 +358,17 @@ impl App {
             Some((b, c)) => (b, c.parse::<usize>().ok()),
             None => (key, None),
         };
-        if let Some(i) = self.prev[p].iter().position(|c| c.kind == 11 && c.text == key) {
+        if let Some(i) = self.prev[p]
+            .iter()
+            .position(|c| c.kind == 11 && c.text == key)
+        {
             self.prev[p][i].checked = value > 0.5;
             self.models[p].set_row_data(i, self.prev[p][i].to_ctl());
             return;
         }
-        let Some(i) = self.prev[p].iter().position(|c| c.key == base) else { return };
+        let Some(i) = self.prev[p].iter().position(|c| c.key == base) else {
+            return;
+        };
         let c = &mut self.prev[p][i];
         match (c.kind, ci) {
             (0, _) => c.value = value,
@@ -306,7 +376,11 @@ impl App {
             (2 | 3, _) => c.index = value as i32,
             (5, Some(ci)) if ci < c.colours.len() => {
                 let n = value as u32;
-                c.colours[ci] = (((n >> 16) & 255) as u8, ((n >> 8) & 255) as u8, (n & 255) as u8);
+                c.colours[ci] = (
+                    ((n >> 16) & 255) as u8,
+                    ((n >> 8) & 255) as u8,
+                    (n & 255) as u8,
+                );
             }
             _ => return,
         }
@@ -318,14 +392,21 @@ impl App {
             .iter()
             .flatten()
             .find(|c| c.key == base && c.kind == 5)
-            .map(|c| c.colours.iter().map(|c| format!("{:02X}{:02X}{:02X}", c.0, c.1, c.2)).collect())
+            .map(|c| {
+                c.colours
+                    .iter()
+                    .map(|c| format!("{:02X}{:02X}{:02X}", c.0, c.1, c.2))
+                    .collect()
+            })
             .unwrap_or_default()
     }
 
     pub fn strip_volume(&mut self, key: &str, v: f32) {
         if let Some(ch) = ChannelName::iter().find(|c| c.to_string() == key) {
             self.touch(&format!("strip.{key}"));
-            if let Some(i) = (0..self.strips.row_count()).find(|i| self.strips.row_data(*i).is_some_and(|s| s.key == key)) {
+            if let Some(i) = (0..self.strips.row_count())
+                .find(|i| self.strips.row_data(*i).is_some_and(|s| s.key == key))
+            {
                 let mut s = self.strips.row_data(i).unwrap();
                 s.volume = v;
                 self.strips.set_row_data(i, s);
@@ -336,17 +417,31 @@ impl App {
 
     pub fn strip_mute(&mut self, key: &str) {
         let Some(m) = self.mixer() else { return };
-        let Some(f) = FaderName::iter().find(|f| m.fader_status[*f].channel.to_string() == key) else { return };
-        let next = if m.fader_status[f].mute_state == MuteState::Unmuted { MuteState::MutedToX } else { MuteState::Unmuted };
+        let Some(f) = FaderName::iter().find(|f| m.fader_status[*f].channel.to_string() == key)
+        else {
+            return;
+        };
+        let next = if m.fader_status[f].mute_state == MuteState::Unmuted {
+            MuteState::MutedToX
+        } else {
+            MuteState::Unmuted
+        };
         self.cmd(G::SetFaderMuteState(f, next));
     }
 
     pub fn route(&mut self, i: usize, o: usize, on: bool) {
-        let (Some(inp), Some(out)) = (nth::<InputDevice>(i), nth::<OutputDevice>(o)) else { return };
+        let (Some(inp), Some(out)) = (nth::<InputDevice>(i), nth::<OutputDevice>(o)) else {
+            return;
+        };
         self.touch("route");
         if let Some(cell) = self.prev_matrix.get_mut(i).and_then(|r| r.get_mut(o)) {
             *cell = on as i32;
-            self.matrix.set_vec(self.prev_matrix.iter().map(|r| ModelRc::new(VecModel::from(r.clone()))).collect::<Vec<_>>());
+            self.matrix.set_vec(
+                self.prev_matrix
+                    .iter()
+                    .map(|r| ModelRc::new(VecModel::from(r.clone())))
+                    .collect::<Vec<_>>(),
+            );
         }
         self.cmd(G::SetRouter(inp, out, on));
     }
@@ -372,77 +467,155 @@ impl App {
         self.optimistic(key, value);
 
         if let Some(r) = table::find(key) {
-            if let Some(m) = self.mixer() {
-                if let Some(c) = table::command(r, m, value) {
-                    self.cmd(c);
-                }
+            if let Some(m) = self.mixer()
+                && let Some(c) = table::command(r, m, value)
+            {
+                self.cmd(c);
             }
             return;
         }
         let parts: Vec<&str> = key.split(['.', ':', '|']).collect();
         let v = value;
         let b = value > 0.5;
-        let full = self.mixer().is_some_and(|m| m.hardware.device_type == DeviceType::Full);
+        let full = self
+            .mixer()
+            .is_some_and(|m| m.hardware.device_type == DeviceType::Full);
         let cmd: Option<G> = match parts.as_slice() {
-            ["mix", "cough"] => Some(G::SetCoughMuteState(if b { MuteState::MutedToX } else { MuteState::Unmuted })),
+            ["mix", "cough"] => Some(G::SetCoughMuteState(if b {
+                MuteState::MutedToX
+            } else {
+                MuteState::Unmuted
+            })),
             ["mix", "bleep"] => Some(G::SetSwearButtonVolume(v as i8)),
             ["mix", "lock"] => Some(G::SetLockFaders(b)),
-            ["mix", "fch", f] => fader_by_name(f).zip(ChannelName::iter().nth(v as usize)).map(|(f, c)| G::SetFader(f, c)),
-            ["mix", "ffn", f] => fader_by_name(f).zip(MuteFunction::iter().nth(v as usize)).map(|(f, c)| G::SetFaderMuteFunction(f, c)),
+            ["mix", "fch", f] => fader_by_name(f)
+                .zip(ChannelName::iter().nth(v as usize))
+                .map(|(f, c)| G::SetFader(f, c)),
+            ["mix", "ffn", f] => fader_by_name(f)
+                .zip(MuteFunction::iter().nth(v as usize))
+                .map(|(f, c)| G::SetFaderMuteFunction(f, c)),
             ["scr", "icon", f] => fader_by_name(f).map(|f| {
-                let icon = (v as usize).checked_sub(1).and_then(|i| self.status.as_ref().and_then(|s| s.files.icons.get(i).cloned()));
+                let icon = (v as usize).checked_sub(1).and_then(|i| {
+                    self.status
+                        .as_ref()
+                        .and_then(|s| s.files.icons.get(i).cloned())
+                });
                 G::SetScribbleIcon(f, icon)
             }),
-            ["scr", "top", f] => fader_by_name(f).map(|f| G::SetScribbleNumber(f, text.to_string())),
+            ["scr", "top", f] => {
+                fader_by_name(f).map(|f| G::SetScribbleNumber(f, text.to_string()))
+            }
             ["scr", "bot", f] => fader_by_name(f).map(|f| G::SetScribbleText(f, text.to_string())),
             ["scr", "inv", f] => fader_by_name(f).map(|f| G::SetScribbleInvert(f, b)),
             ["mon", "mix"] => nth::<OutputDevice>(v as usize).map(G::SetMonitorMix),
             ["mon", "fx"] => Some(G::SetMonitorWithFx(b)),
             ["sub", "on"] => Some(G::SetSubMixEnabled(b)),
-            ["sub", "vol", i] => i.parse().ok().and_then(nth::<ChannelName>).map(|c| G::SetSubMixVolume(c, v as u8)),
-            ["sub", "link", i] => i.parse().ok().and_then(nth::<ChannelName>).map(|c| G::SetSubMixLinked(c, b)),
-            ["sub", "out", i] => i.parse().ok().and_then(nth::<OutputDevice>).zip(nth::<Mix>(v as usize)).map(|(o, m)| G::SetSubMixOutputMix(o, m)),
+            ["sub", "vol", i] => i
+                .parse()
+                .ok()
+                .and_then(nth::<ChannelName>)
+                .map(|c| G::SetSubMixVolume(c, v as u8)),
+            ["sub", "link", i] => i
+                .parse()
+                .ok()
+                .and_then(nth::<ChannelName>)
+                .map(|c| G::SetSubMixLinked(c, b)),
+            ["sub", "out", i] => i
+                .parse()
+                .ok()
+                .and_then(nth::<OutputDevice>)
+                .zip(nth::<Mix>(v as usize))
+                .map(|(o, m)| G::SetSubMixOutputMix(o, m)),
             ["eq", "gain", i] => i.parse::<usize>().ok().and_then(|i| {
-                if full { nth::<EqFrequencies>(i).map(|f| G::SetEqGain(f, v as i8)) } else { nth::<MiniEqFrequencies>(i).map(|f| G::SetEqMiniGain(f, v as i8)) }
+                if full {
+                    nth::<EqFrequencies>(i).map(|f| G::SetEqGain(f, v as i8))
+                } else {
+                    nth::<MiniEqFrequencies>(i).map(|f| G::SetEqMiniGain(f, v as i8))
+                }
             }),
             ["eq", "freq", i] => text.trim().parse::<f32>().ok().and_then(|hz| {
                 i.parse::<usize>().ok().and_then(|i| {
-                    if full { nth::<EqFrequencies>(i).map(|f| G::SetEqFreq(f, hz)) } else { nth::<MiniEqFrequencies>(i).map(|f| G::SetEqMiniFreq(f, hz)) }
+                    if full {
+                        nth::<EqFrequencies>(i).map(|f| G::SetEqFreq(f, hz))
+                    } else {
+                        nth::<MiniEqFrequencies>(i).map(|f| G::SetEqMiniFreq(f, hz))
+                    }
                 })
             }),
             ["fx", "on"] => Some(G::SetFXEnabled(b)),
             ["fx", "preset"] => nth::<EffectBankPresets>(v as usize).map(G::SetActiveEffectPreset),
             ["fx", "save"] => Some(G::SaveActivePreset()),
-            ["fx", "rename"] => (!text.trim().is_empty()).then(|| G::RenameActivePreset(text.trim().to_string())),
-            ["fx", "load"] => self.status.as_ref().and_then(|s| s.files.presets.get(v as usize).cloned()).map(G::LoadEffectPreset),
+            ["fx", "rename"] => {
+                (!text.trim().is_empty()).then(|| G::RenameActivePreset(text.trim().to_string()))
+            }
+            ["fx", "load"] => self
+                .status
+                .as_ref()
+                .and_then(|s| s.files.presets.get(v as usize).cloned())
+                .map(G::LoadEffectPreset),
             ["samp", "active"] => nth::<SampleBank>(v as usize).map(G::SetActiveSamplerBank),
             ["samp", "reset"] => Some(G::SetSamplerResetOnClear(b)),
             ["samp", "fade"] => Some(G::SetSamplerFadeDuration(v as u32)),
             ["samp", "buf"] => Some(G::SetSamplerPreBufferDuration(v as u16)),
             ["samp", "clearerr"] => Some(G::ClearSampleProcessError()),
             ["samp", "gain", i] => {
-                if let Some(name) = i.parse::<usize>().ok().and_then(|i| self.status.as_ref().and_then(|s| s.files.samples.keys().nth(i).cloned())) {
+                if let Some(name) = i.parse::<usize>().ok().and_then(|i| {
+                    self.status
+                        .as_ref()
+                        .and_then(|s| s.files.samples.keys().nth(i).cloned())
+                }) {
                     self.daemon(DaemonCommand::SetSampleGainPct(name, v as u8));
                     let tx = self.tx.clone();
-                    self.apply_timer.start(TimerMode::SingleShot, Duration::from_millis(600), move || {
-                        let _ = tx.send(Msg::Daemon(DaemonCommand::ApplySampleChange));
-                    });
+                    self.apply_timer.start(
+                        TimerMode::SingleShot,
+                        Duration::from_millis(600),
+                        move || {
+                            let _ = tx.send(Msg::Daemon(DaemonCommand::ApplySampleChange));
+                        },
+                    );
                 }
                 None
             }
-            ["samp", "mode", bk, bt] => bank_by_name(bk).zip(button_by_name(bt)).zip(nth::<SamplePlaybackMode>(v as usize)).map(|((a, b), m)| G::SetSamplerFunction(a, b, m)),
-            ["samp", "order", bk, bt] => bank_by_name(bk).zip(button_by_name(bt)).zip(nth::<SamplePlayOrder>(v as usize)).map(|((a, b), m)| G::SetSamplerOrder(a, b, m)),
-            ["samp", "s", bk, bt, i, act] => bank_by_name(bk).zip(button_by_name(bt)).zip(i.parse::<usize>().ok()).map(|((a, b), i)| {
-                if *act == "0" { G::PlaySampleByIndex(a, b, i) } else { G::RemoveSampleByIndex(a, b, i) }
-            }),
-            ["samp", "start", bk, bt, i] => bank_by_name(bk).zip(button_by_name(bt)).zip(i.parse::<usize>().ok()).map(|((a, b), i)| G::SetSampleStartPercent(a, b, i, v)),
-            ["samp", "end", bk, bt, i] => bank_by_name(bk).zip(button_by_name(bt)).zip(i.parse::<usize>().ok()).map(|((a, b), i)| G::SetSampleStopPercent(a, b, i, v)),
+            ["samp", "mode", bk, bt] => bank_by_name(bk)
+                .zip(button_by_name(bt))
+                .zip(nth::<SamplePlaybackMode>(v as usize))
+                .map(|((a, b), m)| G::SetSamplerFunction(a, b, m)),
+            ["samp", "order", bk, bt] => bank_by_name(bk)
+                .zip(button_by_name(bt))
+                .zip(nth::<SamplePlayOrder>(v as usize))
+                .map(|((a, b), m)| G::SetSamplerOrder(a, b, m)),
+            ["samp", "s", bk, bt, i, act] => bank_by_name(bk)
+                .zip(button_by_name(bt))
+                .zip(i.parse::<usize>().ok())
+                .map(|((a, b), i)| {
+                    if *act == "0" {
+                        G::PlaySampleByIndex(a, b, i)
+                    } else {
+                        G::RemoveSampleByIndex(a, b, i)
+                    }
+                }),
+            ["samp", "start", bk, bt, i] => bank_by_name(bk)
+                .zip(button_by_name(bt))
+                .zip(i.parse::<usize>().ok())
+                .map(|((a, b), i)| G::SetSampleStartPercent(a, b, i, v)),
+            ["samp", "end", bk, bt, i] => bank_by_name(bk)
+                .zip(button_by_name(bt))
+                .zip(i.parse::<usize>().ok())
+                .map(|((a, b), i)| G::SetSampleStopPercent(a, b, i, v)),
             ["samp", "add", bk, bt] => bank_by_name(bk)
                 .zip(button_by_name(bt))
-                .zip(self.status.as_ref().and_then(|s| s.files.samples.keys().nth(v as usize).cloned()))
+                .zip(
+                    self.status
+                        .as_ref()
+                        .and_then(|s| s.files.samples.keys().nth(v as usize).cloned()),
+                )
                 .map(|((a, b), n)| G::AddSample(a, b, n)),
-            ["samp", "halt", bk, bt] => bank_by_name(bk).zip(button_by_name(bt)).map(|(a, b)| G::StopSamplePlayback(a, b)),
-            ["set", "disp", i] => nth::<DisplayModeComponents>(i.parse().unwrap_or(99)).zip(nth::<DisplayMode>(v as usize)).map(|(c, m)| G::SetElementDisplayMode(c, m)),
+            ["samp", "halt", bk, bt] => bank_by_name(bk)
+                .zip(button_by_name(bt))
+                .map(|(a, b)| G::StopSamplePlayback(a, b)),
+            ["set", "disp", i] => nth::<DisplayModeComponents>(i.parse().unwrap_or(99))
+                .zip(nth::<DisplayMode>(v as usize))
+                .map(|(c, m)| G::SetElementDisplayMode(c, m)),
             ["light", ..] => self.light_cmd(&parts, key, v, b),
             ["prof", ..] | ["mprof", ..] => {
                 self.profile_cmd(&parts, text);
@@ -450,7 +623,11 @@ impl App {
             }
             ["path", i, act] => {
                 if let Some((p, _)) = i.parse::<usize>().ok().and_then(|i| PATHS.get(i)) {
-                    self.daemon(if *act == "0" { DaemonCommand::OpenPath(p.clone()) } else { DaemonCommand::RecoverDefaults(p.clone()) });
+                    self.daemon(if *act == "0" {
+                        DaemonCommand::OpenPath(p.clone())
+                    } else {
+                        DaemonCommand::RecoverDefaults(p.clone())
+                    });
                 }
                 None
             }
@@ -471,7 +648,11 @@ impl App {
                             _ => LogLevel::Trace,
                         })
                     }),
-                    "fw" => Some(DaemonCommand::SetFirmwareSource(if v as usize == 1 { FirmwareSource::Beta } else { FirmwareSource::Live })),
+                    "fw" => Some(DaemonCommand::SetFirmwareSource(if v as usize == 1 {
+                        FirmwareSource::Beta
+                    } else {
+                        FirmwareSource::Live
+                    })),
                     "stop" => Some(DaemonCommand::StopDaemon),
                     _ => None,
                 };
@@ -490,18 +671,38 @@ impl App {
     fn profile_cmd(&mut self, parts: &[&str], text: &str) {
         let mic = parts[0] == "mprof";
         let Some(st) = &self.status else { return };
-        let files = if mic { &st.files.mic_profiles } else { &st.files.profiles };
+        let files = if mic {
+            &st.files.mic_profiles
+        } else {
+            &st.files.profiles
+        };
         let text = text.trim().to_string();
         let c = match parts {
-            [_, "save"] => Some(if mic { G::SaveMicProfile() } else { G::SaveProfile() }),
-            [_, "saveas"] if !text.is_empty() => Some(if mic { G::SaveMicProfileAs(text) } else { G::SaveProfileAs(text) }),
-            [_, "new"] if !text.is_empty() => Some(if mic { G::NewMicProfile(text) } else { G::NewProfile(text) }),
-            [_, i, act] => i.parse::<usize>().ok().and_then(|i| files.get(i).cloned()).map(|n| match (mic, *act) {
-                (false, "0") => G::LoadProfile(n, true),
-                (false, _) => G::DeleteProfile(n),
-                (true, "0") => G::LoadMicProfile(n, true),
-                (true, _) => G::DeleteMicProfile(n),
+            [_, "save"] => Some(if mic {
+                G::SaveMicProfile()
+            } else {
+                G::SaveProfile()
             }),
+            [_, "saveas"] if !text.is_empty() => Some(if mic {
+                G::SaveMicProfileAs(text)
+            } else {
+                G::SaveProfileAs(text)
+            }),
+            [_, "new"] if !text.is_empty() => Some(if mic {
+                G::NewMicProfile(text)
+            } else {
+                G::NewProfile(text)
+            }),
+            [_, i, act] => i
+                .parse::<usize>()
+                .ok()
+                .and_then(|i| files.get(i).cloned())
+                .map(|n| match (mic, *act) {
+                    (false, "0") => G::LoadProfile(n, true),
+                    (false, _) => G::DeleteProfile(n),
+                    (true, "0") => G::LoadMicProfile(n, true),
+                    (true, _) => G::DeleteMicProfile(n),
+                }),
             _ => None,
         };
         if let Some(c) = c {
@@ -518,19 +719,41 @@ impl App {
             ["light", "anim"] => nth::<AnimationMode>(v as usize).map(G::SetAnimationMode),
             ["light", "mod1"] => Some(G::SetAnimationMod1(v as u8)),
             ["light", "mod2"] => Some(G::SetAnimationMod2(v as u8)),
-            ["light", "water"] => nth::<WaterfallDirection>(v as usize).map(G::SetAnimationWaterfall),
+            ["light", "water"] => {
+                nth::<WaterfallDirection>(v as usize).map(G::SetAnimationWaterfall)
+            }
             ["light", "allf", _] => Some(G::SetAllFaderColours(c(0), c(1))),
-            ["light", "allstyle"] => nth::<FaderDisplayStyle>(v as usize).map(G::SetAllFaderDisplayStyle),
+            ["light", "allstyle"] => {
+                nth::<FaderDisplayStyle>(v as usize).map(G::SetAllFaderDisplayStyle)
+            }
             ["light", "fader", f, _] => fader_by_name(f).map(|f| G::SetFaderColours(f, c(0), c(1))),
-            ["light", "fstyle", f] => fader_by_name(f).zip(nth::<FaderDisplayStyle>(v as usize)).map(|(f, s)| G::SetFaderDisplayStyle(f, s)),
-            ["light", "btn", i, _] => idx(i).and_then(nth::<Button>).map(|t| G::SetButtonColours(t, c(0), Some(c(1)))),
-            ["light", "boff", i] => idx(i).and_then(nth::<Button>).zip(nth::<ButtonColourOffStyle>(v as usize)).map(|(t, s)| G::SetButtonOffStyle(t, s)),
+            ["light", "fstyle", f] => fader_by_name(f)
+                .zip(nth::<FaderDisplayStyle>(v as usize))
+                .map(|(f, s)| G::SetFaderDisplayStyle(f, s)),
+            ["light", "btn", i, _] => idx(i)
+                .and_then(nth::<Button>)
+                .map(|t| G::SetButtonColours(t, c(0), Some(c(1)))),
+            ["light", "boff", i] => idx(i)
+                .and_then(nth::<Button>)
+                .zip(nth::<ButtonColourOffStyle>(v as usize))
+                .map(|(t, s)| G::SetButtonOffStyle(t, s)),
             ["light", "simple", i, _] => idx(i).and_then(nth::<SimpleColourTargets>).map(|t| {
-                if t == SimpleColourTargets::Global { G::SetGlobalColour(c(0)) } else { G::SetSimpleColour(t, c(0)) }
+                if t == SimpleColourTargets::Global {
+                    G::SetGlobalColour(c(0))
+                } else {
+                    G::SetSimpleColour(t, c(0))
+                }
             }),
-            ["light", "enc", i, _] => idx(i).and_then(nth::<EncoderColourTargets>).map(|t| G::SetEncoderColour(t, c(0), c(1), c(2))),
-            ["light", "samp", i, _] => idx(i).and_then(nth::<SamplerColourTargets>).map(|t| G::SetSampleColour(t, c(0), c(1), c(2))),
-            ["light", "soff", i] => idx(i).and_then(nth::<SamplerColourTargets>).zip(nth::<ButtonColourOffStyle>(v as usize)).map(|(t, s)| G::SetSampleOffStyle(t, s)),
+            ["light", "enc", i, _] => idx(i)
+                .and_then(nth::<EncoderColourTargets>)
+                .map(|t| G::SetEncoderColour(t, c(0), c(1), c(2))),
+            ["light", "samp", i, _] => idx(i)
+                .and_then(nth::<SamplerColourTargets>)
+                .map(|t| G::SetSampleColour(t, c(0), c(1), c(2))),
+            ["light", "soff", i] => idx(i)
+                .and_then(nth::<SamplerColourTargets>)
+                .zip(nth::<ButtonColourOffStyle>(v as usize))
+                .map(|(t, s)| G::SetSampleOffStyle(t, s)),
             _ => {
                 let _ = b;
                 None

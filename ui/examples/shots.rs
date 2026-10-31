@@ -1,6 +1,8 @@
-use goxlr_ui::{AppWindow, Theme, wire, with_app};
 use goxlr_ipc::DaemonStatus;
-use slint::platform::software_renderer::{MinimalSoftwareWindow, PremultipliedRgbaColor, RepaintBufferType};
+use goxlr_ui::{AppWindow, Theme, wire, with_app};
+use slint::platform::software_renderer::{
+    MinimalSoftwareWindow, PremultipliedRgbaColor, RepaintBufferType,
+};
 use slint::platform::{Platform, WindowAdapter};
 use slint::{ComponentHandle, PhysicalSize, PlatformError};
 use std::rc::Rc;
@@ -21,10 +23,16 @@ impl Platform for P {
 }
 
 fn main() {
-    let out = std::env::args().nth(1).unwrap_or_else(|| "/tmp/shots".into());
+    let out = std::env::args()
+        .nth(1)
+        .unwrap_or_else(|| "/tmp/shots".into());
     std::fs::create_dir_all(&out).unwrap();
     let window = MinimalSoftwareWindow::new(RepaintBufferType::NewBuffer);
-    slint::platform::set_platform(Box::new(P { window: window.clone(), start: Instant::now() })).unwrap();
+    slint::platform::set_platform(Box::new(P {
+        window: window.clone(),
+        start: Instant::now(),
+    }))
+    .unwrap();
     let ui = AppWindow::new().unwrap();
     let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
     wire(&ui, tx);
@@ -33,8 +41,19 @@ fn main() {
     window.set_size(PhysicalSize::new(w, h));
     ui.show().unwrap();
     with_app(|a| a.on_status(Some(st)));
-    let names = ["mixer", "routing", "mic", "effects", "sampler", "lighting", "profiles", "settings"];
-    let tabs: [&[i32]; 8] = [&[0], &[0], &[0, 1, 2, 3], &[0, 1, 6], &[0, 3], &[0, 1, 2, 3], &[0, 1, 2, 3], &[0, 1, 2]];
+    let names = [
+        "mixer", "routing", "mic", "effects", "sampler", "lighting", "profiles", "settings",
+    ];
+    let tabs: [&[i32]; 8] = [
+        &[0],
+        &[0],
+        &[0, 1, 2, 3],
+        &[0, 1, 6],
+        &[0, 3],
+        &[0, 1, 2, 3],
+        &[0, 1, 2, 3],
+        &[0, 1, 2],
+    ];
     for dark in [true, false] {
         ui.global::<Theme>().set_dark(dark);
         for (p, name) in names.iter().enumerate() {
@@ -59,7 +78,11 @@ fn main() {
                 for px in &buf {
                     img.extend_from_slice(&[px.red, px.green, px.blue, 255]);
                 }
-                let file = std::fs::File::create(format!("{out}/{}-{name}-{t}.png", if dark { "dark" } else { "light" })).unwrap();
+                let file = std::fs::File::create(format!(
+                    "{out}/{}-{name}-{t}.png",
+                    if dark { "dark" } else { "light" }
+                ))
+                .unwrap();
                 let mut enc = png::Encoder::new(std::io::BufWriter::new(file), w, h);
                 enc.set_color(png::ColorType::Rgba);
                 enc.set_depth(png::BitDepth::Eight);

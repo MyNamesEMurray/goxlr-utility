@@ -37,13 +37,6 @@ jobs:
         with:
           path: goxlr-utility
 
-      # Now Checkout the App Wrappers repository..
-      - name: "Check out GoXLR Utility UI"
-        uses: actions/checkout@v4
-        with:
-          repository: goxlr-on-linux/goxlr-utility-ui-wrapper-app
-          path: goxlr-utility-ui
-
       - name: "Install Rust"
         uses: dtolnay/rust-toolchain@stable
 
@@ -63,31 +56,11 @@ jobs:
       - name: "Build Utility"
         run: "cargo build --manifest-path=goxlr-utility/Cargo.toml --release --all-features"
 
-      # Build the UI into the same target directory..
-      - name: "Build UI"
-        run: "cargo build --manifest-path=goxlr-utility-ui/src-tauri/Cargo.toml --target-dir=goxlr-utility/target --release"
-
       # Prepare NSIS
       - name: Install NSIS
         uses: repolevedavaj/install-nsis@v1.0.3
         with:
           nsis-version: '3.11'
-
-      - name: "Preparing NSIS"
-        run: mkdir -p ${{ github.workspace }}/NSIS_Plugins/x86-unicode/
-
-      - name: "Downloading Tauri Utility Plugin"
-        uses: suisei-cn/actions-download-file@v1.6.0
-        with:
-          url: https://github.com/tauri-apps/nsis-tauri-utils/releases/download/nsis_tauri_utils-v0.1.1/nsis_tauri_utils.dll
-          target: ${{ github.workspace }}/NSIS_Plugins/x86-unicode/
-
-      - name: "Downloading WebView2 Bootstrapper"
-        uses: suisei-cn/actions-download-file@v1.6.0
-        with:
-          url: https://go.microsoft.com/fwlink/p/?LinkId=2124703
-          filename: MicrosoftEdgeWebview2Setup.exe
-          target: goxlr-utility/ci/nsis/
 
       - name: "Downloading VC Runtime"
         uses: suisei-cn/actions-download-file@v1.6.0
@@ -99,7 +72,6 @@ jobs:
       - name: "Build NSIS Packages"
         uses: joncloud/makensis-action@publish
         with:
-          additional-plugin-paths: ${{ github.workspace }}/NSIS_Plugins
           script-file: goxlr-utility/ci/nsis/goxlr-utility.nsi
           arguments: "/DPRODUCT_VERSION=${{ needs.get_version.outputs.version }}${{ env.SUFFIX }}"
 
@@ -123,7 +95,7 @@ jobs:
       - name: "Install Required Libraries"
         run: |
           sudo apt-get update
-          sudo apt-get install libpulse0 libdbus-1-dev pkg-config libspeechd-dev
+          sudo apt-get install libpulse0 libdbus-1-dev pkg-config libspeechd-dev libfontconfig1-dev
 
       - name: "Loading Cache"
         uses: actions/cache@v4
@@ -169,13 +141,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: goxlr-utility
-
-      # Now Checkout the App Wrappers repository..
-      - name: "Check out GoXLR Utility UI"
-        uses: actions/checkout@v4
-        with:
-          repository: goxlr-on-linux/goxlr-utility-ui-wrapper-app
-          path: goxlr-utility-ui
 
       - name: "Install Rust"
         uses: dtolnay/rust-toolchain@stable

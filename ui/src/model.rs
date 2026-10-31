@@ -41,24 +41,65 @@ impl C {
         }
     }
 
-    pub fn slider(key: &str, label: &str, min: f32, max: f32, step: f32, value: f32, unit: &str) -> C {
-        C { min, max, step, value, unit: unit.into(), ..C::base(0, key, label) }
+    pub fn slider(
+        key: &str,
+        label: &str,
+        min: f32,
+        max: f32,
+        step: f32,
+        value: f32,
+        unit: &str,
+    ) -> C {
+        C {
+            min,
+            max,
+            step,
+            value,
+            unit: unit.into(),
+            ..C::base(0, key, label)
+        }
     }
 
-    pub fn slider_link(key: &str, label: &str, min: f32, max: f32, value: f32, link_key: &str, linked: bool) -> C {
-        C { min, max, value, text: link_key.into(), checked: linked, ..C::base(11, key, label) }
+    pub fn slider_link(
+        key: &str,
+        label: &str,
+        min: f32,
+        max: f32,
+        value: f32,
+        link_key: &str,
+        linked: bool,
+    ) -> C {
+        C {
+            min,
+            max,
+            value,
+            text: link_key.into(),
+            checked: linked,
+            ..C::base(11, key, label)
+        }
     }
 
     pub fn toggle(key: &str, label: &str, on: bool) -> C {
-        C { checked: on, ..C::base(1, key, label) }
+        C {
+            checked: on,
+            ..C::base(1, key, label)
+        }
     }
 
     pub fn choice(key: &str, label: &str, options: Vec<String>, index: i32) -> C {
-        C { options, index, ..C::base(2, key, label) }
+        C {
+            options,
+            index,
+            ..C::base(2, key, label)
+        }
     }
 
     pub fn seg(key: &str, label: &str, options: Vec<String>, index: i32) -> C {
-        C { options, index, ..C::base(3, key, label) }
+        C {
+            options,
+            index,
+            ..C::base(3, key, label)
+        }
     }
 
     pub fn heading(label: &str) -> C {
@@ -66,19 +107,33 @@ impl C {
     }
 
     pub fn colours(key: &str, label: &str, colours: Vec<(u8, u8, u8)>) -> C {
-        C { colours, ..C::base(5, key, label) }
+        C {
+            colours,
+            ..C::base(5, key, label)
+        }
     }
 
     pub fn field(key: &str, label: &str, text: &str) -> C {
-        C { text: text.into(), unit: "Type here, press Enter".into(), ..C::base(6, key, label) }
+        C {
+            text: text.into(),
+            unit: "Type here, press Enter".into(),
+            ..C::base(6, key, label)
+        }
     }
 
     pub fn button(key: &str, label: &str, text: &str, danger: bool) -> C {
-        C { text: text.into(), checked: danger, ..C::base(7, key, label) }
+        C {
+            text: text.into(),
+            checked: danger,
+            ..C::base(7, key, label)
+        }
     }
 
     pub fn info(label: &str, text: &str) -> C {
-        C { text: text.into(), ..C::base(8, "", label) }
+        C {
+            text: text.into(),
+            ..C::base(8, "", label)
+        }
     }
 
     pub fn note(text: &str) -> C {
@@ -107,11 +162,17 @@ impl C {
             unit: SharedString::from(self.unit.as_str()),
             text: SharedString::from(self.text.as_str()),
             options: ModelRc::new(VecModel::from(
-                self.options.iter().map(|s| SharedString::from(s.as_str())).collect::<Vec<_>>(),
+                self.options
+                    .iter()
+                    .map(|s| SharedString::from(s.as_str()))
+                    .collect::<Vec<_>>(),
             )),
             index: self.index,
             colours: ModelRc::new(VecModel::from(
-                self.colours.iter().map(|c| Color::from_rgb_u8(c.0, c.1, c.2)).collect::<Vec<_>>(),
+                self.colours
+                    .iter()
+                    .map(|c| Color::from_rgb_u8(c.0, c.1, c.2))
+                    .collect::<Vec<_>>(),
             )),
             enabled: self.enabled,
         }
@@ -123,12 +184,12 @@ pub fn pretty(s: &str) -> String {
         return format!("{}:1", r.replace('_', "."));
     }
     for p in ["Gate", "Comp", "Equalizer"] {
-        if let Some(r) = s.strip_prefix(p) {
-            if r.chars().next().is_some_and(|c| c.is_ascii_digit()) {
-                let n: String = r.chars().take_while(|c| c.is_ascii_digit()).collect();
-                let u = r[n.len()..].replace("KHz", "kHz");
-                return format!("{} {}", n, u);
-            }
+        if let Some(r) = s.strip_prefix(p)
+            && r.chars().next().is_some_and(|c| c.is_ascii_digit())
+        {
+            let n: String = r.chars().take_while(|c| c.is_ascii_digit()).collect();
+            let u = r[n.len()..].replace("KHz", "kHz");
+            return format!("{} {}", n, u);
         }
     }
     let mut out = String::new();
@@ -161,17 +222,30 @@ pub fn nth<T: IntoEnumIterator>(i: usize) -> Option<T> {
 
 pub fn hex_to_rgb(s: &str) -> (u8, u8, u8) {
     let s = s.trim_start_matches('#');
-    let p = |r: std::ops::Range<usize>| s.get(r).and_then(|x| u8::from_str_radix(x, 16).ok()).unwrap_or(0);
+    let p = |r: std::ops::Range<usize>| {
+        s.get(r)
+            .and_then(|x| u8::from_str_radix(x, 16).ok())
+            .unwrap_or(0)
+    };
     (p(0..2), p(2..4), p(4..6))
 }
 
 pub fn packed_to_hex(v: f32) -> String {
     let n = v as u32;
-    format!("{:02X}{:02X}{:02X}", (n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff)
+    format!(
+        "{:02X}{:02X}{:02X}",
+        (n >> 16) & 0xff,
+        (n >> 8) & 0xff,
+        n & 0xff
+    )
 }
 
 pub fn sync(model: &VecModel<Ctl>, prev: &mut Vec<C>, new: Vec<C>, skip: &dyn Fn(&str) -> bool) {
-    let same_shape = prev.len() == new.len() && prev.iter().zip(&new).all(|(a, b)| a.key == b.key && a.kind == b.kind);
+    let same_shape = prev.len() == new.len()
+        && prev
+            .iter()
+            .zip(&new)
+            .all(|(a, b)| a.key == b.key && a.kind == b.kind);
     if !same_shape {
         model.set_vec(new.iter().map(C::to_ctl).collect::<Vec<_>>());
         *prev = new;

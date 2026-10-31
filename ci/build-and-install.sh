@@ -10,6 +10,7 @@ cargo build --release
 strip target/release/goxlr-client
 strip target/release/goxlr-daemon
 strip target/release/goxlr-launcher
+strip target/release/goxlr-ui
 strip target/release/goxlr-defaults
 
 DEPLOY_DIR=deployment/out
@@ -25,9 +26,10 @@ sudo cp target/release/goxlr-daemon /usr/bin/
 sudo cp target/release/goxlr-client /usr/bin/
 sudo cp target/release/goxlr-defaults /usr/bin/
 sudo cp target/release/goxlr-launcher /usr/bin/
+sudo cp target/release/goxlr-ui /usr/bin/
 sudo cp target/release/goxlr-firmware /usr/bin/
 
-sudo chmod 755 /usr/bin/goxlr-client /usr/bin/goxlr-daemon /usr/bin/goxlr-defaults /usr/bin/goxlr-launcher
+sudo chmod 755 /usr/bin/goxlr-client /usr/bin/goxlr-daemon /usr/bin/goxlr-defaults /usr/bin/goxlr-launcher /usr/bin/goxlr-ui
 
 sudo cp daemon/resources/goxlr-utility.png /usr/share/icons/hicolor/48x48/apps/
 sudo cp daemon/resources/goxlr-utility.svg /usr/share/icons/hicolor/scalable/apps/

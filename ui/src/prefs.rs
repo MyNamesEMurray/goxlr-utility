@@ -6,14 +6,20 @@ fn path() -> Option<PathBuf> {
     } else if cfg!(target_os = "macos") {
         std::env::var_os("HOME").map(|h| PathBuf::from(h).join("Library/Application Support"))
     } else {
-        std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from).or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".config")))
+        std::env::var_os("XDG_CONFIG_HOME")
+            .map(PathBuf::from)
+            .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".config")))
     }?;
     Some(base.join("goxlr-utility").join("ui.conf"))
 }
 
 pub fn load() -> bool {
-    let text = path().and_then(|p| std::fs::read_to_string(p).ok()).unwrap_or_default();
-    text.lines().find_map(|l| l.strip_prefix("dark=")).is_none_or(|v| v.trim() == "1")
+    let text = path()
+        .and_then(|p| std::fs::read_to_string(p).ok())
+        .unwrap_or_default();
+    text.lines()
+        .find_map(|l| l.strip_prefix("dark="))
+        .is_none_or(|v| v.trim() == "1")
 }
 
 pub fn save(dark: bool) {

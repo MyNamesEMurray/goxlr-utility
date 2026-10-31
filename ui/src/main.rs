@@ -5,9 +5,12 @@ use slint::ComponentHandle;
 
 fn main() -> Result<(), slint::PlatformError> {
     // A second launch just exits, the existing window stays.
-    let Ok(_guard) = std::net::TcpListener::bind(("127.0.0.1", 14599)) else { return Ok(()) };
+    let Ok(_guard) = std::net::TcpListener::bind(("127.0.0.1", 14599)) else {
+        return Ok(());
+    };
     let ui = AppWindow::new()?;
-    ui.global::<goxlr_ui::Theme>().set_dark(goxlr_ui::prefs::load());
+    ui.global::<goxlr_ui::Theme>()
+        .set_dark(goxlr_ui::prefs::load());
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     wire(&ui, tx);
     backend::spawn(rx, ui.as_weak());

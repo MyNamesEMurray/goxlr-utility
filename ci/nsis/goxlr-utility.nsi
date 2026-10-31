@@ -131,10 +131,7 @@ var InstallDirSet
 var AutoStartRegSet
 var AutoStartReg
 
-var UseAppRegSet
-var UseAppReg
 
-var WebViewInstalled
 
 !macro GetRegKeys un
     Function ${un}GetRegKeys
@@ -166,28 +163,6 @@ var WebViewInstalled
         ${EndIf}
 
         ClearErrors
-        ReadRegStr $KeyTest HKLM64 "${PRODUCT_REGKEY}" "UseApp"
-        ${If} ${Errors}
-            StrCpy $UseAppRegSet 0
-        ${Else}
-            StrCpy $UseAppRegSet 1
-            StrCpy $UseAppReg $KeyTest
-        ${EndIf}
-
-        ClearErrors
-		; The registry key indicating that Edge WebView is installed (Check global, and user)
-		ReadRegStr $4 HKLM "SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}" "pv"
-		ReadRegStr $5 HKCU "SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}" "pv"
-		StrCmp $4 "" 0 WEBVIEW_PRESENT
-		StrCmp $5 "" 0 WEBVIEW_PRESENT
-		StrCpy $WebViewInstalled 0
-		Goto WEBVIEW_END
-
-		WEBVIEW_PRESENT:
-			StrCpy $WebViewInstalled 1
-
-		WEBVIEW_END:
-        ClearErrors
     FunctionEnd
 !macroend
 !insertmacro GetRegKeys ""
@@ -214,12 +189,8 @@ Function PerformActions
     !insertmacro INSTALLOPTIONS_EXTRACT "post-install.ini"
 
     ; Set any cached values..
-    StrCmp $AutoStartRegSet 1 0 USE_APP
+    StrCmp $AutoStartRegSet 1 0 END
     !insertmacro INSTALLOPTIONS_WRITE "post-install.ini" "Field 2" "State" $AutoStartReg
-
-    USE_APP:
-        StrCmp $UseAppRegSet 1 0 END
-        !insertmacro INSTALLOPTIONS_WRITE "post-install.ini" "Field 3" "State" $UseAppReg
 
     END:
     !insertmacro INSTALLOPTIONS_DISPLAY "post-install.ini"
@@ -227,9 +198,7 @@ FunctionEnd
 
 Function PerformActionsLeave
     var /GLOBAL AUTO_START
-    var /GLOBAL USE_APP
     !insertmacro INSTALLOPTIONS_READ $AUTO_START "post-install.ini" "Field 2" "State"
-    !insertmacro INSTALLOPTIONS_READ $USE_APP "post-install.ini" "Field 3" "State"
 FunctionEnd
 
 Function IsUtilRunning
@@ -307,22 +276,6 @@ Function CleanOldInstaller
     END:
 FunctionEnd
 
-Function InstallWebView
-    DetailPrint "Installing Edge Webview"
-    SetOutPath "$TEMP"
-
-	Delete "$TEMP\MicrosoftEdgeWebview2Setup.exe"
-	File "MicrosoftEdgeWebview2Setup.exe"
-
-	ExecWait "$TEMP\MicrosoftEdgeWebview2Setup.exe /silent /install" $1
-	${IfNot} $1 == 0
-		DetailPrint "Failed to install WebView Runtime, continuing without."
-	${EndIf}
-
-	Delete "$TEMP\MicrosoftEdgeWebview2Setup.exe"
-	ClearErrors
-FunctionEnd
-
 Function InstallVCRuntime
     DetailPrint "Installing VC Runtime.."
     SetOutPath "$TEMP"
@@ -346,13 +299,6 @@ Section "MainSection" SEC01
     ; Make sure the Visual C++ Runtime is installed (TODO: Only on first install)
     Call InstallVCRuntime
 
-	; Make sure WebView2 is installed..
-	${If} $USE_APP == 1
-		${If} $WebViewInstalled == 0
-			Call InstallWebView
-		${EndIf}
-	${EndIf}
-
     ; This is the main installer section..
     SetOutPath "$INSTDIR"
 
@@ -362,7 +308,7 @@ Section "MainSection" SEC01
     File "..\..\target\release\goxlr-client-quiet.exe"
     File "..\..\target\release\goxlr-defaults.exe"
     File "..\..\target\release\goxlr-launcher.exe"
-    File "..\..\target\release\goxlr-utility-ui.exe"
+    File "..\..\target\release\goxlr-ui.exe"
     File "..\..\target\release\SAAPI64.dll"
     File "..\..\target\release\nvdaControllerClient64.dll"
     File "..\..\LICENSE"
@@ -384,14 +330,6 @@ Section "MainSection" SEC01
         Delete "$SMPROGRAMS\Startup\GoXLR Utility.lnk"
 
     POST_AUTO_START:
-        StrCmp $USE_APP 0 REMOVE_APP
-        nsExec::Exec "$INSTDIR\goxlr-utility-ui.exe --install"
-        Goto POST_OPTION
-
-    REMOVE_APP:
-        nsExec::Exec "$INSTDIR\goxlr-utility-ui.exe --remove"
-
-    POST_OPTION:
 SectionEnd
 
 Section -Post
@@ -405,7 +343,6 @@ Section -Post
 
   WriteRegStr HKLM64 "${PRODUCT_REGKEY}" "InstallPath" "$INSTDIR"
   WriteRegStr HKLM64 "${PRODUCT_REGKEY}" "StartMenu" "$StartMenuFolder"
-  WriteRegStr HKLM64 "${PRODUCT_REGKEY}" "UseApp" "$USE_APP"
   WriteRegStr HKLM64 "${PRODUCT_REGKEY}" "AutoStart" "$AUTO_START"
 SectionEnd
 

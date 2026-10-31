@@ -29,6 +29,7 @@ cargo build --release --all-features
 strip target/release/goxlr-client
 strip target/release/goxlr-daemon
 strip target/release/goxlr-launcher
+strip target/release/goxlr-ui
 strip target/release/goxlr-defaults
 
 DEPLOY_DIR=deployment/deb
