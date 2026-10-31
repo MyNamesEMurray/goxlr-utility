@@ -59,9 +59,16 @@ jobs:
 
       # Prepare NSIS
       - name: Install NSIS
-        uses: repolevedavaj/install-nsis@v1.0.3
-        with:
-          nsis-version: '3.11'
+        shell: pwsh
+        run: |
+          if (Get-Command choco -ErrorAction SilentlyContinue) {
+            choco install nsis -y --no-progress
+          } else {
+            winget install --id NSIS.NSIS -e --silent --accept-source-agreements --accept-package-agreements
+          }
+          $nsis = "C:\Program Files (x86)\NSIS"
+          $nsis | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+          & "$nsis\makensis.exe" /VERSION
 
       - name: "Downloading VC Runtime"
         uses: suisei-cn/actions-download-file@v1.6.0
