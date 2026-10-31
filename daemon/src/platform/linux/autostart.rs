@@ -58,6 +58,7 @@ pub fn create_startup_link() -> Result<()> {
     // Ok(())
 }
 
+#[cfg_attr(test, allow(dead_code))]
 fn get_startup_dir() -> Option<PathBuf> {
     // Attempt to locate the 'Autostart' directory based on the XDG Specification:
     // https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html

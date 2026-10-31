@@ -1,3 +1,5 @@
+#![allow(clippy::double_must_use)]
+
 use crate::{DaemonRequest, DaemonStatus, GoXLRCommand, HttpSettings};
 use anyhow::Result;
 use async_trait::async_trait;
