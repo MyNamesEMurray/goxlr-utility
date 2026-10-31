@@ -11,8 +11,8 @@ Windows. [Click Here](https://discord.gg/BRBjkkbvmZ) to join our discord!
 
 * Full control over the GoXLR and GoXLR Mini (Similar to the official App)
 * Compatibility with profiles created by the official application
-* An accessible UI designed to work well with Assistive Technologies
-* Remote Access. Control your GoXLR from another computer on your network
+* A lightweight native desktop app with a simple mode for beginners and an advanced mode for everything else
+* Network API access, so other tools on your network can control your GoXLR
 * A Sample 'Pre-Buffer'. Record audio from before you press the button
 * Exit Actions, including saving profiles and loading other profiles / lighting
 * Multiple Device Support. Run more than one GoXLR on one PC
@@ -79,30 +79,23 @@ Gate Amount to 0, then reconfigure it once your mic is working. Once done, go ex
 
 ## The UI
 
-The Utility's UI is web based and served directly from the utility to your web browser of choice (if configured, it
-can also be served to a web browser on another computer). The Utility also provides an 'Application' which wraps the
-web UI into a dedicated app. If you're using the Utility on Windows this option is presented to you during install.
-The UI design was modelled around the official application in an attempt to provide a familiar interface for those
-moving from Windows to other platforms, rather than forcing people to learn a new configuration paradigm.
+The Utility ships with `goxlr-ui`, a native desktop app (built with [Slint](https://slint.dev), software rendered, no
+browser or web engine). It talks to the running daemon over the local IPC socket. Open it from the tray icon or the
+`GoXLR Utility` menu item; the daemon starts it from the `goxlr-ui` binary installed next to the daemon executable.
 
-![image](https://github.com/GoXLR-on-Linux/goxlr-utility/assets/574943/8f14bd2c-e67a-42e5-bd9f-b3cb367e171d)
-
-If you're running on Linux, the 'Application' isn't provided as part of the base utility installation. If you'd
-prefer to use it, check out the [GoXLR UI Repository](https://github.com/frostyCoolSlug/goxlr-utility-ui/), which
-provides various builds for distributions. Once installed, you should be able to go to System -> Utility Settings
-and change the UI Handler there.
-
-### Native UI (`goxlr-ui`)
-
-The `ui` crate is a native desktop application built with [Slint](https://slint.dev) (software renderer, no web
-engine). It talks to the running daemon over the local IPC socket, so it needs no browser and no HTTP server. If a
-`goxlr-ui` binary sits next to the daemon executable, the tray 'Open UI' action starts it instead of opening a browser.
+It starts in **simple mode**: plain-language labels and just the controls most people need (volumes, microphone,
+voice effects, sampler, colours, profiles). Switch on **Advanced mode** (bottom left) for routing, sub mixes, gate,
+compressor and EQ detail, every effect parameter, per-button lighting and daemon options. The dark/light and
+simple/advanced choices are remembered.
 
 ```
 cargo run --release -p goxlr-ui
 ```
 
 Slint is used under its royalty-free desktop licence terms; check that they suit how you distribute builds.
+
+The daemon still exposes its HTTP / websocket API for scripts and integrations (for example the StreamDeck plugin), but
+it no longer serves a web interface.
 
 ## Building
 

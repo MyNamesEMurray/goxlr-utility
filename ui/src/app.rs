@@ -1,7 +1,7 @@
 use crate::model::{C, nth, pretty, sync};
 use crate::pages::{self, Ctx, LOG_LEVELS, PATHS};
 use crate::table;
-use crate::{AppWindow, Ctl, Strip};
+use crate::{AppWindow, Ctl, Mode, Strip};
 use goxlr_ipc::{DaemonCommand, DaemonStatus, FirmwareSource, GoXLRCommand as G, LogLevel, MixerStatus};
 use goxlr_types::*;
 use slint::{ComponentHandle, Model, ModelRc, SharedString, Timer, TimerMode, VecModel, Weak};
@@ -35,6 +35,7 @@ pub struct App {
     prev_matrix: Vec<Vec<i32>>,
     last_mic: Option<String>,
     apply_timer: Timer,
+    adv: bool,
 }
 
 fn fader_by_name(s: &str) -> Option<FaderName> {
@@ -67,6 +68,7 @@ impl App {
             prev_matrix: vec![],
             last_mic: None,
             apply_timer: Timer::default(),
+            adv: ui.global::<Mode>().get_advanced(),
             models,
         };
         ui.set_mixer_ctls(app.models[0].clone().into());
@@ -81,7 +83,37 @@ impl App {
         ui.set_inputs(app.inputs.clone().into());
         ui.set_outputs(app.outputs.clone().into());
         ui.set_matrix(app.matrix.clone().into());
+        app.apply_tabs(ui);
         app
+    }
+
+    fn apply_tabs(&self, ui: &AppWindow) {
+        let t = |p: u8| ModelRc::new(VecModel::from(pages::tabs(p, self.adv).into_iter().map(SharedString::from).collect::<Vec<_>>()));
+        ui.set_mic_tabs(t(2));
+        ui.set_fx_tabs(t(3));
+        ui.set_sampler_tabs(t(4));
+        ui.set_light_tabs(t(5));
+        ui.set_profile_tabs(t(6));
+        ui.set_settings_tabs(t(7));
+        ui.set_mic_tab(0);
+        ui.set_fx_tab(0);
+        ui.set_sampler_tab(0);
+        ui.set_light_tab(0);
+        ui.set_profile_tab(0);
+        ui.set_settings_tab(0);
+    }
+
+    pub fn set_advanced(&mut self, adv: bool) {
+        self.adv = adv;
+        let Some(ui) = self.ui.upgrade() else { return };
+        if !adv && ui.get_page() == 1 {
+            ui.set_page(0);
+        }
+        self.apply_tabs(&ui);
+        for p in &mut self.prev {
+            p.clear();
+        }
+        self.refresh();
     }
 
     pub fn set_mic_level(&self, level: f32) {
@@ -130,7 +162,7 @@ impl App {
         let page = ui.get_page() as u8;
         let tab = Self::tab_of(&ui, page);
 
-        let want_mic = if page == 0 { self.serial.clone().filter(|_| self.status.is_some()) } else { None };
+        let want_mic = if page == 0 || page == 2 { self.serial.clone().filter(|_| self.status.is_some()) } else { None };
         if want_mic != self.last_mic {
             let _ = self.tx.send(Msg::Mic(want_mic.clone()));
             self.last_mic = want_mic;
@@ -146,10 +178,10 @@ impl App {
         let mut strips: Option<Vec<Strip>> = None;
         let mut matrix: Option<(Vec<String>, Vec<String>, Vec<Vec<i32>>)> = None;
         let rows: Vec<C> = match m {
-            None if page == 7 => pages::settings(st, None, self.confirm.as_deref(), tab),
+            None if page == 7 => pages::settings(st, None, self.confirm.as_deref(), tab, self.adv),
             None => vec![C::note("No GoXLR detected. Plug in a device and it will appear here.")],
             Some(m) => {
-                let c = Ctx { st, m, confirm: self.confirm.as_deref() };
+                let c = Ctx { st, m, confirm: self.confirm.as_deref(), adv: self.adv };
                 match page {
                     0 => {
                         strips = Some(
@@ -177,7 +209,7 @@ impl App {
                     4 => pages::sampler(&c, tab),
                     5 => pages::lighting(&c, tab),
                     6 => pages::profiles(&c, tab),
-                    _ => pages::settings(st, Some(m), self.confirm.as_deref(), tab),
+                    _ => pages::settings(st, Some(m), self.confirm.as_deref(), tab, self.adv),
                 }
             }
         };
@@ -317,6 +349,21 @@ impl App {
         let b = value > 0.5;
         let full = self.mixer().is_some_and(|m| m.hardware.device_type == DeviceType::Full);
         let cmd: Option<G> = match parts.as_slice() {
+            ["tone", name] => {
+                if let Some(m) = self.mixer() {
+                    let full = m.hardware.device_type == DeviceType::Full;
+                    for i in pages::tone_bands(m, name) {
+                        if full {
+                            if let Some(f) = nth::<EqFrequencies>(i) {
+                                self.cmd(G::SetEqGain(f, v as i8));
+                            }
+                        } else if let Some(f) = nth::<MiniEqFrequencies>(i) {
+                            self.cmd(G::SetEqMiniGain(f, v as i8));
+                        }
+                    }
+                }
+                None
+            }
             ["mix", "cough"] => Some(G::SetCoughMuteState(if b { MuteState::MutedToX } else { MuteState::Unmuted })),
             ["mix", "bleep"] => Some(G::SetSwearButtonVolume(v as i8)),
             ["mix", "lock"] => Some(G::SetLockFaders(b)),

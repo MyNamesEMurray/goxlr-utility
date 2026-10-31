@@ -1,4 +1,4 @@
-use goxlr_ui::{AppWindow, Theme, wire, with_app};
+use goxlr_ui::{AppWindow, Mode, Theme, wire, with_app};
 use goxlr_ipc::DaemonStatus;
 use slint::platform::software_renderer::{MinimalSoftwareWindow, PremultipliedRgbaColor, RepaintBufferType};
 use slint::platform::{Platform, WindowAdapter};
@@ -34,10 +34,17 @@ fn main() {
     ui.show().unwrap();
     with_app(|a| a.on_status(Some(st)));
     let names = ["mixer", "routing", "mic", "effects", "sampler", "lighting", "profiles", "settings"];
-    let tabs: [&[i32]; 8] = [&[0], &[0], &[0, 1, 2, 3], &[0, 1, 6], &[0, 3], &[0, 1, 2, 3], &[0, 1, 2], &[0, 1, 2]];
-    for dark in [true, false] {
+    let tabs_adv: [&[i32]; 8] = [&[0], &[0], &[0, 1, 2, 3], &[0, 1, 6], &[0, 3], &[0, 1, 2, 3], &[0, 1, 2], &[0, 1, 2]];
+    let tabs_simple: [&[i32]; 8] = [&[0], &[0], &[0], &[0], &[0, 1], &[0], &[0, 1], &[0]];
+    for (dark, adv) in [(true, false), (false, false), (true, true), (false, true)] {
         ui.global::<Theme>().set_dark(dark);
+        ui.global::<Mode>().set_advanced(adv);
+        with_app(|a| a.set_advanced(adv));
+        let tabs = if adv { &tabs_adv } else { &tabs_simple };
         for (p, name) in names.iter().enumerate() {
+            if p == 1 && !adv {
+                continue;
+            }
             for &t in tabs[p] {
                 ui.set_page(p as i32);
                 match p {
@@ -59,7 +66,7 @@ fn main() {
                 for px in &buf {
                     img.extend_from_slice(&[px.red, px.green, px.blue, 255]);
                 }
-                let file = std::fs::File::create(format!("{out}/{}-{name}-{t}.png", if dark { "dark" } else { "light" })).unwrap();
+                let file = std::fs::File::create(format!("{out}/{}-{}-{name}-{t}.png", if adv { "adv" } else { "simple" }, if dark { "dark" } else { "light" })).unwrap();
                 let mut enc = png::Encoder::new(std::io::BufWriter::new(file), w, h);
                 enc.set_color(png::ColorType::Rgba);
                 enc.set_depth(png::BitDepth::Eight);

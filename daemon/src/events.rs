@@ -208,11 +208,11 @@ fn launch_native_ui() -> bool {
     path.exists() && Command::new(path).stdout(Stdio::null()).stderr(Stdio::null()).spawn().is_ok()
 }
 
-fn open_default(url: &str) -> std::io::Result<()> {
+fn open_default(_url: &str) -> std::io::Result<()> {
     if launch_native_ui() {
         return Ok(());
     }
-    open::that(url)
+    Err(std::io::Error::new(std::io::ErrorKind::NotFound, "goxlr-ui was not found next to the daemon"))
 }
 
 fn get_util_url(state: &DaemonState) -> String {

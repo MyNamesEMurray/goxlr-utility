@@ -2,6 +2,7 @@ pub mod app;
 pub mod backend;
 pub mod model;
 pub mod pages;
+pub mod prefs;
 pub mod table;
 
 slint::include_modules!();
@@ -20,6 +21,8 @@ pub fn with_app(f: impl FnOnce(&mut app::App)) {
     });
 }
 
+use slint::ComponentHandle;
+
 pub fn wire(ui: &AppWindow, tx: tokio::sync::mpsc::UnboundedSender<app::Msg>) {
     APP.with(|a| *a.borrow_mut() = Some(app::App::new(ui, tx)));
     ui.on_event(|k, v, t| with_app(|a| a.event(&k, v, &t)));
@@ -28,4 +31,17 @@ pub fn wire(ui: &AppWindow, tx: tokio::sync::mpsc::UnboundedSender<app::Msg>) {
     ui.on_route(|i, o, on| with_app(|a| a.route(i as usize, o as usize, on)));
     ui.on_tab_changed(|_, _| with_app(|a| a.refresh()));
     ui.on_page_changed(|_| with_app(|a| a.refresh()));
+    let weak = ui.as_weak();
+    ui.on_mode_changed(move |adv| {
+        with_app(|a| a.set_advanced(adv));
+        if let Some(ui) = weak.upgrade() {
+            prefs::save(ui.global::<Theme>().get_dark(), adv);
+        }
+    });
+    let weak = ui.as_weak();
+    ui.on_theme_changed(move |dark| {
+        if let Some(ui) = weak.upgrade() {
+            prefs::save(dark, ui.global::<Mode>().get_advanced());
+        }
+    });
 }

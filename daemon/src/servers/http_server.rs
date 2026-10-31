@@ -9,7 +9,6 @@ use actix_ws::{AggregatedMessage, CloseCode, CloseReason, Session};
 use anyhow::{Result, anyhow};
 use enum_map::EnumMap;
 use futures_util::StreamExt;
-use include_dir::{Dir, include_dir};
 use jsonpath_rust::JsonPath;
 use log::{debug, error, info, warn};
 use mime_guess::MimeGuess;
@@ -36,8 +35,6 @@ use goxlr_types::FaderName;
 
 use crate::primary_worker::{DeviceCommand, DeviceSender};
 use crate::servers::server_packet::handle_packet;
-
-const WEB_CONTENT: Dir = include_dir!("./daemon/web-content/");
 
 struct AppData {
     usb_tx: DeviceSender,
@@ -524,22 +521,8 @@ async fn upload_firmware(
     }
 }
 
-async fn default(req: HttpRequest) -> HttpResponse {
-    let path = if req.path() == "/" || req.path() == "" {
-        "/index.html"
-    } else {
-        req.path()
-    };
-    let path_part = &path[1..path.len()];
-    let file = WEB_CONTENT.get_file(path_part);
-    if let Some(file) = file {
-        let mime_type = MimeGuess::from_path(path).first_or_octet_stream();
-        let mut builder = HttpResponse::Ok();
-        builder.insert_header(ContentType(mime_type));
-        builder.body(file.contents())
-    } else {
-        HttpResponse::NotFound().finish()
-    }
+async fn default() -> HttpResponse {
+    HttpResponse::NotFound().finish()
 }
 
 async fn get_status(app_data: Data<RwLock<AppData>>) -> Result<DaemonStatus> {

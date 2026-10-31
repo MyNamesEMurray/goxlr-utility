@@ -2669,7 +2669,6 @@ dependencies = [
  "goxlr-types",
  "goxlr-usb",
  "image",
- "include_dir",
  "interprocess",
  "io-kit-sys",
  "json-patch",

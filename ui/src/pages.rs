@@ -19,6 +19,21 @@ pub struct Ctx<'a> {
     pub st: &'a DaemonStatus,
     pub m: &'a MixerStatus,
     pub confirm: Option<&'a str>,
+    pub adv: bool,
+}
+
+pub fn tabs(page: u8, adv: bool) -> Vec<&'static str> {
+    match (page, adv) {
+        (2, true) => vec!["Input", "Gate", "Compressor", "Equaliser"],
+        (3, true) => vec!["Presets", "Reverb", "Echo", "Pitch", "Gender", "Megaphone", "Robot", "Hard tune"],
+        (4, true) => vec!["Bank A", "Bank B", "Bank C", "Files"],
+        (4, false) => vec!["Bank A", "Bank B", "Bank C"],
+        (5, true) => vec!["Animation", "Faders", "Buttons", "Other"],
+        (6, true) => vec!["Profiles", "Mic profiles", "Folders"],
+        (6, false) => vec!["Profiles", "Mic profiles"],
+        (7, true) => vec!["Mixer", "Daemon", "Device"],
+        _ => vec![],
+    }
 }
 
 fn names<T: IntoEnumIterator + std::fmt::Display>() -> Vec<String> {
@@ -27,6 +42,20 @@ fn names<T: IntoEnumIterator + std::fmt::Display>() -> Vec<String> {
 
 pub fn mixer(c: &Ctx) -> Vec<C> {
     let m = c.m;
+    if !c.adv {
+        let inputs: Vec<String> = ChannelName::iter().take(8).map(|c| pretty(&c.to_string())).collect();
+        let mut out = vec![
+            C::hint("Drag a slider to change how loud something is. Press Mute to silence it. The labels under each name show which channel each of your hardware faders controls."),
+            C::heading("Your microphone"),
+            C::toggle("mix.cough", "Mute my microphone", m.cough_button.state != MuteState::Unmuted),
+            C::heading("What each hardware fader controls"),
+        ];
+        for f in FaderName::iter() {
+            let ci = ChannelName::iter().take(8).position(|x| x == m.fader_status[f].channel).map_or(-1, |i| i as i32);
+            out.push(C::choice(&format!("mix.fch.{f}"), &format!("Fader {f}"), inputs.clone(), ci));
+        }
+        return out;
+    }
     let mut out = vec![
         C::heading("Microphone"),
         C::toggle("mix.cough", "Cough button muted", m.cough_button.state != MuteState::Unmuted),
@@ -100,7 +129,54 @@ pub fn matrix(m: &MixerStatus) -> (Vec<String>, Vec<String>, Vec<Vec<i32>>) {
     (inputs, outputs, rows)
 }
 
+fn tone_groups(m: &MixerStatus) -> Vec<(&'static str, Vec<usize>, f32)> {
+    let mini = m.hardware.device_type == DeviceType::Mini;
+    let groups: [(&str, Vec<usize>); 3] = if mini {
+        [("Bass", vec![0, 1]), ("Mids", vec![2, 3]), ("Treble", vec![4, 5])]
+    } else {
+        [("Bass", vec![0, 1, 2]), ("Mids", vec![3, 4, 5, 6]), ("Treble", vec![7, 8, 9])]
+    };
+    groups
+        .into_iter()
+        .map(|(n, idxs)| {
+            let sum: i32 = idxs
+                .iter()
+                .map(|&i| {
+                    if mini {
+                        MiniEqFrequencies::iter().nth(i).and_then(|b| m.mic_status.equaliser_mini.gain.get(&b).copied()).unwrap_or(0) as i32
+                    } else {
+                        EqFrequencies::iter().nth(i).and_then(|b| m.mic_status.equaliser.gain.get(&b).copied()).unwrap_or(0) as i32
+                    }
+                })
+                .sum();
+            (n, idxs.clone(), (sum as f32 / idxs.len() as f32).round())
+        })
+        .collect()
+}
+
+pub fn tone_bands(m: &MixerStatus, name: &str) -> Vec<usize> {
+    tone_groups(m).into_iter().find(|g| g.0 == name).map(|g| g.1).unwrap_or_default()
+}
+
 pub fn mic(c: &Ctx, tab: u8) -> Vec<C> {
+    if !c.adv {
+        let m = c.m;
+        let mut out = vec![
+            C::hint("Set up your microphone here. Talk normally and watch the level bar: it should reach the middle or a little higher, without hitting the red end."),
+            C::heading("Microphone"),
+        ];
+        out.extend(table::pick(m, "mic.type", "Microphone type"));
+        out.extend(table::pick(m, "mic.gain", "Microphone volume"));
+        out.extend(table::pick(m, "mic.deess", "Soften harsh \"S\" sounds"));
+        out.push(C::heading("Cut background noise"));
+        out.extend(table::pick(m, "gate.on", "Noise gate on"));
+        out.extend(table::pick(m, "gate.thr", "How much to cut"));
+        out.push(C::heading("Tone"));
+        for (name, _, avg) in tone_groups(m) {
+            out.push(C::slider(&format!("tone.{name}"), name, -9.0, 9.0, 1.0, avg, " dB"));
+        }
+        return out;
+    }
     if tab != 3 {
         return table::build(table::MIC, tab, c.m);
     }
@@ -130,6 +206,24 @@ pub fn effects(c: &Ctx, tab: u8) -> Vec<C> {
     let Some(e) = &c.m.effects else {
         return vec![C::note("Effects are not available on this device.")];
     };
+    if !c.adv {
+        let m = c.m;
+        let mut out = vec![
+            C::hint("Change how your voice sounds. Switch effects on, pick one of the six presets, then fine-tune with the sliders. Use Advanced mode for every detailed setting."),
+            C::heading("Presets"),
+            C::toggle("fx.on", "Voice effects on", e.is_enabled),
+            C::seg("fx.preset", "Preset", (1..=6).map(|i| i.to_string()).collect(), idx(&e.active_preset)),
+            C::heading("Quick controls"),
+        ];
+        for (k, l) in [("fx.rev.amount", "Reverb (room echo)"), ("fx.echo.amount", "Echo"), ("fx.pitch.amount", "Pitch (lower to higher)"), ("fx.gender.amount", "Voice tone (deeper to lighter)")] {
+            out.extend(table::pick(m, k, l));
+        }
+        out.push(C::heading("Voice changers"));
+        for (k, l) in [("fx.mega.on", "Megaphone"), ("fx.robot.on", "Robot"), ("fx.hard.on", "Auto-tune")] {
+            out.extend(table::pick(m, k, l));
+        }
+        return out;
+    }
     if tab != 0 {
         return table::build(table::FX, tab, c.m);
     }
@@ -171,19 +265,27 @@ pub fn sampler(c: &Ctx, tab: u8) -> Vec<C> {
     }
     let bank = SampleBank::iter().nth(tab as usize).unwrap_or(SampleBank::A);
     let mut out = vec![];
+    if !c.adv {
+        out.push(C::hint("Each bank holds sounds for the four sampler buttons on your device. Add a sound to a button, then press the button (or Play here) to hear it."));
+    }
+    out.push(C::seg("samp.active", "Bank used by the device", vec!["A".into(), "B".into(), "C".into()], idx(&s.active_bank)));
     let Some(btns) = s.banks.get(&bank) else { return out };
     let sample_names: Vec<String> = c.st.files.samples.keys().cloned().collect();
     for b in SampleButtons::iter() {
         let Some(btn) = btns.get(&b) else { continue };
         out.push(C::heading(&format!("{}{}", pretty(&b.to_string()), if btn.is_playing { "  (playing)" } else { "" })));
-        out.push(C::choice(&format!("samp.mode.{bank}.{b}"), "Mode", names::<SamplePlaybackMode>(), idx(&btn.function)));
-        out.push(C::seg(&format!("samp.order.{bank}.{b}"), "Order", names::<SamplePlayOrder>(), idx(&btn.order)));
+        if c.adv {
+            out.push(C::choice(&format!("samp.mode.{bank}.{b}"), "Mode", names::<SamplePlaybackMode>(), idx(&btn.function)));
+            out.push(C::seg(&format!("samp.order.{bank}.{b}"), "Order", names::<SamplePlayOrder>(), idx(&btn.order)));
+        }
         for (i, smp) in btn.samples.iter().enumerate() {
             let k = format!("{bank}.{b}.{i}");
             let confirm_key = format!("samp.s.{k}|1");
             out.push(C::item(&format!("samp.s.{k}"), &smp.name, false, true, ["Play", if c.confirm == Some(&confirm_key) { "Confirm?" } else { "Remove" }]));
-            out.push(C::slider(&format!("samp.start.{k}"), "Start", 0.0, 100.0, 0.1, smp.start_pct, "%"));
-            out.push(C::slider(&format!("samp.end.{k}"), "End", 0.0, 100.0, 0.1, smp.stop_pct, "%"));
+            if c.adv {
+                out.push(C::slider(&format!("samp.start.{k}"), "Start", 0.0, 100.0, 0.1, smp.start_pct, "%"));
+                out.push(C::slider(&format!("samp.end.{k}"), "End", 0.0, 100.0, 0.1, smp.stop_pct, "%"));
+            }
         }
         out.push(C::choice(&format!("samp.add.{bank}.{b}"), "Add sample", sample_names.clone(), -1));
         out.push(C::button(&format!("samp.halt.{bank}.{b}"), "", "Stop playback", false));
@@ -198,6 +300,26 @@ fn rgb(s: &str) -> (u8, u8, u8) {
 pub fn lighting(c: &Ctx, tab: u8) -> Vec<C> {
     let l = &c.m.lighting;
     let mut out = vec![];
+    if !c.adv {
+        out.push(C::hint("Pick the colours that light up your device. Click a coloured circle and slide R, G and B to mix your own colour."));
+        for (i, t) in SimpleColourTargets::iter().enumerate() {
+            let label = match t {
+                SimpleColourTargets::Global => "Main colour",
+                SimpleColourTargets::Accent => "Accent colour",
+                _ => continue,
+            };
+            if let Some(s) = l.simple.get(&t) {
+                out.push(C::colours(&format!("light.simple.{i}"), label, vec![rgb(&s.colour_one)]));
+            }
+        }
+        if let Some(f) = FaderName::iter().find_map(|f| l.faders.get(&f)) {
+            out.push(C::colours("light.allf", "Fader colours (top, bottom)", vec![rgb(&f.colours.colour_one), rgb(&f.colours.colour_two)]));
+        }
+        if l.animation.supported {
+            out.push(C::choice("light.anim", "Animation", names::<AnimationMode>(), idx(&l.animation.mode)));
+        }
+        return out;
+    }
     match tab {
         0 => {
             if !l.animation.supported {
@@ -281,14 +403,30 @@ pub fn profiles(c: &Ctx, tab: u8) -> Vec<C> {
         out.push(C::item(&k, n, n == current, n != current, ["Load", if c.confirm == Some(&ck) { "Confirm delete?" } else { "Delete" }]));
     }
     out.push(C::heading("Manage"));
-    out.push(C::button(&format!("{prefix}.save"), &format!("Current {kind}"), "Save", false));
-    out.push(C::field(&format!("{prefix}.saveas"), "Save as", ""));
-    out.push(C::field(&format!("{prefix}.new"), "New", ""));
+    out.push(C::button(&format!("{prefix}.save"), &format!("Save changes to this {kind}"), "Save", false));
+    out.push(C::field(&format!("{prefix}.saveas"), "Save as a copy", ""));
+    out.push(C::field(&format!("{prefix}.new"), "Create a new one", ""));
     out
 }
 
-pub fn settings(st: &DaemonStatus, m: Option<&MixerStatus>, confirm: Option<&str>, tab: u8) -> Vec<C> {
+pub fn settings(st: &DaemonStatus, m: Option<&MixerStatus>, confirm: Option<&str>, tab: u8, adv: bool) -> Vec<C> {
     let cfg = &st.config;
+    if !adv {
+        let mut out = vec![
+            C::hint("Everyday settings. Switch on Advanced mode (bottom left) for network, logging, firmware and hardware options."),
+            C::heading("Application"),
+            C::toggle("d.auto", "Start with my computer", cfg.autostart_enabled),
+            C::toggle("d.tray", "Show tray icon", cfg.show_tray_icon),
+        ];
+        if let Some(m) = m {
+            out.push(C::heading("About your device"));
+            out.push(C::info("Model", &format!("{:?}", m.hardware.device_type)));
+            out.push(C::info("Serial number", &m.hardware.serial_number));
+            out.push(C::info("Firmware", &m.hardware.versions.firmware.to_string()));
+        }
+        out.push(C::info("Utility version", &cfg.daemon_version));
+        return out;
+    }
     match tab {
         0 => {
             let Some(m) = m else { return vec![C::note("No GoXLR detected.")] };

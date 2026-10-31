@@ -1,5 +1,5 @@
-import { Theme, Ctl, Btn, Toggle, HSlider, VSlider, Choice, Seg, Swatch, Field } from "components.slint";
-export { Ctl, Theme }
+import { Theme, Mode, Ctl, Btn, Toggle, HSlider, VSlider, Choice, Seg, Swatch, Field } from "components.slint";
+export { Ctl, Theme, Mode }
 
 export struct Strip {
     key: string,
@@ -12,7 +12,7 @@ export struct Strip {
 component CtlRow inherits Rectangle {
     in property <Ctl> c;
     callback event(string, float, string);
-    height: c.kind == 4 ? 52px : (c.kind == 9 ? 30px : 40px);
+    height: c.kind == 4 ? 52px : (c.kind == 9 ? 30px : (c.kind == 12 ? 62px : 40px));
 
     if c.kind == 4: VerticalLayout {
         alignment: end;
@@ -22,7 +22,7 @@ component CtlRow inherits Rectangle {
     }
     if c.kind == 0: HorizontalLayout {
         spacing: 12px;
-        Text { text: c.label; width: 150px; color: Theme.mute; vertical-alignment: center; }
+        Text { text: c.label; width: 200px; color: Theme.mute; vertical-alignment: center; }
         HSlider {
             value: c.value;
             min: c.min;
@@ -40,7 +40,7 @@ component CtlRow inherits Rectangle {
     }
     if c.kind == 11: HorizontalLayout {
         spacing: 12px;
-        Text { text: c.label; width: 150px; color: Theme.mute; vertical-alignment: center; }
+        Text { text: c.label; width: 200px; color: Theme.mute; vertical-alignment: center; }
         HSlider {
             value: c.value;
             min: c.min;
@@ -63,7 +63,7 @@ component CtlRow inherits Rectangle {
     }
     if c.kind == 1: HorizontalLayout {
         spacing: 12px;
-        Text { text: c.label; width: 150px; color: Theme.mute; vertical-alignment: center; }
+        Text { text: c.label; width: 200px; color: Theme.mute; vertical-alignment: center; }
         VerticalLayout {
             alignment: center;
             Toggle { checked: c.checked; toggled(v) => { root.event(c.key, v ? 1 : 0, ""); } }
@@ -72,7 +72,7 @@ component CtlRow inherits Rectangle {
     }
     if c.kind == 2: HorizontalLayout {
         spacing: 12px;
-        Text { text: c.label; width: 150px; color: Theme.mute; vertical-alignment: center; }
+        Text { text: c.label; width: 200px; color: Theme.mute; vertical-alignment: center; }
         Choice {
             width: 220px;
             options: c.options;
@@ -83,12 +83,12 @@ component CtlRow inherits Rectangle {
     }
     if c.kind == 3: HorizontalLayout {
         spacing: 12px;
-        Text { text: c.label; width: 150px; color: Theme.mute; vertical-alignment: center; }
+        Text { text: c.label; width: 200px; color: Theme.mute; vertical-alignment: center; }
         Seg { options: c.options; current: c.index; picked(i) => { root.event(c.key, i, ""); } }
     }
     if c.kind == 5: HorizontalLayout {
         spacing: 12px;
-        Text { text: c.label; width: 150px; color: Theme.mute; vertical-alignment: center; }
+        Text { text: c.label; width: 200px; color: Theme.mute; vertical-alignment: center; }
         for col[i] in c.colours: VerticalLayout {
             alignment: center;
             Swatch {
@@ -100,23 +100,39 @@ component CtlRow inherits Rectangle {
     }
     if c.kind == 6: HorizontalLayout {
         spacing: 12px;
-        Text { text: c.label; width: 150px; color: Theme.mute; vertical-alignment: center; }
+        Text { text: c.label; width: 200px; color: Theme.mute; vertical-alignment: center; }
         Field { text: c.text; placeholder: c.unit; committed(t) => { root.event(c.key, 0, t); } }
         Rectangle { }
     }
     if c.kind == 7: HorizontalLayout {
         spacing: 12px;
-        Text { text: c.label; width: 150px; color: Theme.mute; vertical-alignment: center; }
+        Text { text: c.label; width: 200px; color: Theme.mute; vertical-alignment: center; }
         Btn { text: c.text; danger: c.checked; clicked => { root.event(c.key, 0, ""); } }
         Rectangle { }
     }
     if c.kind == 8: HorizontalLayout {
         spacing: 12px;
-        Text { text: c.label; width: 150px; color: Theme.mute; vertical-alignment: center; }
+        Text { text: c.label; width: 200px; color: Theme.mute; vertical-alignment: center; }
         Text { text: c.text; color: Theme.text; vertical-alignment: center; }
     }
+    if c.kind == 12: Rectangle {
+        y: 4px;
+        height: parent.height - 8px;
+        border-radius: 8px;
+        background: Theme.panel;
+        Rectangle { x: 0; width: 3px; background: Theme.accent; }
+        Text {
+            x: 16px;
+            width: parent.width - 32px;
+            height: parent.height;
+            text: c.label;
+            wrap: word-wrap;
+            color: Theme.mute;
+            vertical-alignment: center;
+        }
+    }
     if c.kind == 9: HorizontalLayout {
-        Rectangle { width: 162px; }
+        Rectangle { width: 212px; }
         Text {
             text: c.label;
             color: Theme.mute;
@@ -154,10 +170,31 @@ component TabPage inherits Rectangle {
     in property <[string]> tabs;
     in-out property <int> tab;
     in property <[Ctl]> ctls;
+    in property <bool> show-meter;
+    in property <float> level;
     callback event(string, float, string);
     callback tab-changed(int);
     VerticalLayout {
         spacing: 8px;
+        if show-meter: HorizontalLayout {
+            height: 28px;
+            spacing: 12px;
+            Text { text: "Mic level"; width: 200px; color: Theme.mute; vertical-alignment: center; }
+            VerticalLayout {
+                alignment: center;
+                Rectangle {
+                    height: 8px;
+                    border-radius: 4px;
+                    background: Theme.line;
+                    clip: true;
+                    Rectangle {
+                        x: 0;
+                        width: parent.width * Math.clamp(root.level, 0, 1);
+                        background: @linear-gradient(90deg, Theme.accent 0%, #ffb454 70%, Theme.danger 100%);
+                    }
+                }
+            }
+        }
         if tabs.length > 1: Seg {
             options: tabs;
             current: tab;
@@ -243,7 +280,7 @@ component MixerPage inherits Rectangle {
             }
             HorizontalLayout {
                 spacing: 12px;
-                Text { text: "Mic level"; width: 150px; color: Theme.mute; vertical-alignment: center; }
+                Text { text: "Mic level"; width: 200px; color: Theme.mute; vertical-alignment: center; }
                 VerticalLayout {
                     alignment: center;
                     Rectangle {
@@ -346,22 +383,22 @@ export component AppWindow inherits Window {
     in property <[[int]]> matrix;
     in property <[Ctl]> routing-ctls;
 
-    in property <[string]> mic-tabs: ["Input", "Gate", "Compressor", "Equaliser"];
+    in property <[string]> mic-tabs;
     in-out property <int> mic-tab;
     in property <[Ctl]> mic-ctls;
-    in property <[string]> fx-tabs: ["Presets", "Reverb", "Echo", "Pitch", "Gender", "Megaphone", "Robot", "Hard tune"];
+    in property <[string]> fx-tabs;
     in-out property <int> fx-tab;
     in property <[Ctl]> fx-ctls;
-    in property <[string]> sampler-tabs: ["Bank A", "Bank B", "Bank C", "Files"];
+    in property <[string]> sampler-tabs;
     in-out property <int> sampler-tab;
     in property <[Ctl]> sampler-ctls;
-    in property <[string]> light-tabs: ["Animation", "Faders", "Buttons", "Other"];
+    in property <[string]> light-tabs;
     in-out property <int> light-tab;
     in property <[Ctl]> light-ctls;
-    in property <[string]> profile-tabs: ["Profiles", "Mic profiles", "Folders"];
+    in property <[string]> profile-tabs;
     in-out property <int> profile-tab;
     in property <[Ctl]> profile-ctls;
-    in property <[string]> settings-tabs: ["Mixer", "Daemon", "Device"];
+    in property <[string]> settings-tabs;
     in-out property <int> settings-tab;
     in property <[Ctl]> settings-ctls;
 
@@ -371,6 +408,8 @@ export component AppWindow inherits Window {
     callback strip-mute(string);
     callback route(int, int, bool);
     callback page-changed(int);
+    callback mode-changed(bool);
+    callback theme-changed(bool);
 
     HorizontalLayout {
         Rectangle {
@@ -395,7 +434,8 @@ export component AppWindow inherits Window {
                     }
                 }
                 for n[i] in root.nav: Rectangle {
-                    height: 36px;
+                    visible: Mode.advanced || i != 1;
+                    height: (Mode.advanced || i != 1) ? 36px : 0px;
                     border-radius: 8px;
                     background: i == root.page ? Theme.panel : (nt.has-hover ? Theme.panel : transparent);
                     if i == root.page: Rectangle { x: 0; y: 6px; width: 3px; height: parent.height - 12px; background: Theme.accent; }
@@ -418,9 +458,19 @@ export component AppWindow inherits Window {
                     padding-bottom: 6px;
                     VerticalLayout {
                         alignment: center;
-                        Toggle { checked: Theme.dark; toggled(v) => { Theme.dark = v; } }
+                        Toggle { checked: Theme.dark; toggled(v) => { Theme.dark = v; root.theme-changed(v); } }
                     }
                     Text { text: Theme.dark ? "Dark mode" : "Light mode"; color: Theme.mute; vertical-alignment: center; }
+                }
+                HorizontalLayout {
+                    spacing: 10px;
+                    padding-left: 6px;
+                    padding-bottom: 6px;
+                    VerticalLayout {
+                        alignment: center;
+                        Toggle { checked: Mode.advanced; toggled(v) => { Mode.advanced = v; root.mode-changed(v); } }
+                    }
+                    Text { text: "Advanced mode"; color: Theme.mute; vertical-alignment: center; }
                 }
             }
         }
@@ -474,6 +524,8 @@ export component AppWindow inherits Window {
                 event(k, v, t) => { root.event(k, v, t); }
             }
             if root.page == 2: TabPage {
+                show-meter: true;
+                level: root.mic-level;
                 tabs: root.mic-tabs;
                 tab <=> root.mic-tab;
                 ctls: root.mic-ctls;
