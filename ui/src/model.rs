@@ -81,10 +81,6 @@ impl C {
         C { text: text.into(), ..C::base(8, "", label) }
     }
 
-    pub fn hint(text: &str) -> C {
-        C::base(12, "", text)
-    }
-
     pub fn note(text: &str) -> C {
         C::base(9, "", text)
     }

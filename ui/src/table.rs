@@ -161,13 +161,3 @@ pub fn command(r: &Row, m: &MixerStatus, value: f32) -> Option<G> {
     }
 }
 
-pub fn pick(m: &MixerStatus, key: &str, label: &str) -> Option<C> {
-    let r = find(key)?;
-    Some(match &r.k {
-        K::Slider { min, max, unit, get, .. } => C::slider(r.key, label, *min, *max, 1.0, get(m), unit),
-        K::Toggle { get, .. } => C::toggle(r.key, label, get(m)),
-        K::Choice { seg, opts, get, .. } => {
-            if *seg { C::seg(r.key, label, opts(), get(m)) } else { C::choice(r.key, label, opts(), get(m)) }
-        }
-    })
-}

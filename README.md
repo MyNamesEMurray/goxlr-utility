@@ -11,7 +11,7 @@ Windows. [Click Here](https://discord.gg/BRBjkkbvmZ) to join our discord!
 
 * Full control over the GoXLR and GoXLR Mini (Similar to the official App)
 * Compatibility with profiles created by the official application
-* A lightweight native desktop app with a simple mode for beginners and an advanced mode for everything else
+* A lightweight native desktop app (no browser needed)
 * Network API access, so other tools on your network can control your GoXLR
 * A Sample 'Pre-Buffer'. Record audio from before you press the button
 * Exit Actions, including saving profiles and loading other profiles / lighting
@@ -83,10 +83,8 @@ The Utility ships with `goxlr-ui`, a native desktop app (built with [Slint](http
 browser or web engine). It talks to the running daemon over the local IPC socket. Open it from the tray icon or the
 `GoXLR Utility` menu item; the daemon starts it from the `goxlr-ui` binary installed next to the daemon executable.
 
-It starts in **simple mode**: plain-language labels and just the controls most people need (volumes, microphone,
-voice effects, sampler, colours, profiles). Switch on **Advanced mode** (bottom left) for routing, sub mixes, gate,
-compressor and EQ detail, every effect parameter, per-button lighting and daemon options. The dark/light and
-simple/advanced choices are remembered.
+It covers the mixer, routing and sub mix, microphone gate / compressor / EQ, effects, sampler, lighting, profiles and
+daemon settings. The dark/light choice is remembered.
 
 ```
 cargo run --release -p goxlr-ui

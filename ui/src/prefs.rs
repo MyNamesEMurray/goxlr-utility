@@ -11,17 +11,16 @@ fn path() -> Option<PathBuf> {
     Some(base.join("goxlr-utility").join("ui.conf"))
 }
 
-pub fn load() -> (bool, bool) {
+pub fn load() -> bool {
     let text = path().and_then(|p| std::fs::read_to_string(p).ok()).unwrap_or_default();
-    let flag = |k: &str, default: bool| text.lines().find_map(|l| l.strip_prefix(k)).map_or(default, |v| v.trim() == "1");
-    (flag("dark=", true), flag("advanced=", false))
+    text.lines().find_map(|l| l.strip_prefix("dark=")).is_none_or(|v| v.trim() == "1")
 }
 
-pub fn save(dark: bool, advanced: bool) {
+pub fn save(dark: bool) {
     if let Some(p) = path() {
         if let Some(dir) = p.parent() {
             let _ = std::fs::create_dir_all(dir);
         }
-        let _ = std::fs::write(p, format!("dark={}\nadvanced={}\n", dark as u8, advanced as u8));
+        let _ = std::fs::write(p, format!("dark={}\n", dark as u8));
     }
 }

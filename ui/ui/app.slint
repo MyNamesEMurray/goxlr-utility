@@ -1,5 +1,5 @@
-import { Theme, Mode, Ctl, Btn, Toggle, HSlider, VSlider, Choice, Seg, Swatch, Field } from "components.slint";
-export { Ctl, Theme, Mode }
+import { Theme, Ctl, Btn, Toggle, HSlider, VSlider, Choice, Seg, Swatch, Field } from "components.slint";
+export { Ctl, Theme }
 
 export struct Strip {
     key: string,
@@ -12,7 +12,7 @@ export struct Strip {
 component CtlRow inherits Rectangle {
     in property <Ctl> c;
     callback event(string, float, string);
-    height: c.kind == 4 ? 52px : (c.kind == 9 ? 30px : (c.kind == 12 ? 62px : 40px));
+    height: c.kind == 4 ? 52px : (c.kind == 9 ? 30px : 40px);
 
     if c.kind == 4: VerticalLayout {
         alignment: end;
@@ -114,22 +114,6 @@ component CtlRow inherits Rectangle {
         spacing: 12px;
         Text { text: c.label; width: 200px; color: Theme.mute; vertical-alignment: center; }
         Text { text: c.text; color: Theme.text; vertical-alignment: center; }
-    }
-    if c.kind == 12: Rectangle {
-        y: 4px;
-        height: parent.height - 8px;
-        border-radius: 8px;
-        background: Theme.panel;
-        Rectangle { x: 0; width: 3px; background: Theme.accent; }
-        Text {
-            x: 16px;
-            width: parent.width - 32px;
-            height: parent.height;
-            text: c.label;
-            wrap: word-wrap;
-            color: Theme.mute;
-            vertical-alignment: center;
-        }
     }
     if c.kind == 9: HorizontalLayout {
         Rectangle { width: 212px; }
@@ -408,7 +392,6 @@ export component AppWindow inherits Window {
     callback strip-mute(string);
     callback route(int, int, bool);
     callback page-changed(int);
-    callback mode-changed(bool);
     callback theme-changed(bool);
 
     HorizontalLayout {
@@ -434,8 +417,7 @@ export component AppWindow inherits Window {
                     }
                 }
                 for n[i] in root.nav: Rectangle {
-                    visible: Mode.advanced || i != 1;
-                    height: (Mode.advanced || i != 1) ? 36px : 0px;
+                    height: 36px;
                     border-radius: 8px;
                     background: i == root.page ? Theme.panel : (nt.has-hover ? Theme.panel : transparent);
                     if i == root.page: Rectangle { x: 0; y: 6px; width: 3px; height: parent.height - 12px; background: Theme.accent; }
@@ -461,16 +443,6 @@ export component AppWindow inherits Window {
                         Toggle { checked: Theme.dark; toggled(v) => { Theme.dark = v; root.theme-changed(v); } }
                     }
                     Text { text: Theme.dark ? "Dark mode" : "Light mode"; color: Theme.mute; vertical-alignment: center; }
-                }
-                HorizontalLayout {
-                    spacing: 10px;
-                    padding-left: 6px;
-                    padding-bottom: 6px;
-                    VerticalLayout {
-                        alignment: center;
-                        Toggle { checked: Mode.advanced; toggled(v) => { Mode.advanced = v; root.mode-changed(v); } }
-                    }
-                    Text { text: "Advanced mode"; color: Theme.mute; vertical-alignment: center; }
                 }
             }
         }
