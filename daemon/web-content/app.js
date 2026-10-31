@@ -175,7 +175,6 @@ const CHANNELS = ['Mic', 'LineIn', 'Console', 'System', 'Game', 'Chat', 'Sample'
 const CH_LABEL = { LineIn: 'Line In', MicMonitor: 'Mic Monitor', LineOut: 'Line Out', Sample: 'Samples' };
 const label = (s) => CH_LABEL[s] || s.replace(/([a-z])([A-Z0-9])/g, '$1 $2');
 const lopts = (arr) => arr.map((v) => [v, label(v)]);
-const SHORT = { Headphones: 'Phones', BroadcastMix: 'Bcast', ChatMic: 'Chat', LineOut: 'Line', StreamMix2: 'Strm 2' };
 const FADERS = ['A', 'B', 'C', 'D'];
 const MUTE_FN = ['All', 'ToStream', 'ToVoiceChat', 'ToPhones', 'ToLineOut', 'ToStream2', 'ToStreams'];
 const pct = (v) => Math.round((v / 255) * 100) + '%';
@@ -228,7 +227,7 @@ const views = {
     const m = mixer();
     const inputs = Object.keys(m.router);
     const outputs = Object.keys(m.router[inputs[0]]);
-    const tbl = h('div', { class: 'matrix-wrap' }, h('table', { class: 'matrix' }, h('tr', {}, h('th'), ...outputs.map((o) => h('th', { title: label(o) }, h('span', { class: 'f' }, label(o)), h('span', { class: 's' }, SHORT[o] || label(o))))),
+    const tbl = h('div', { class: 'matrix-wrap' }, h('table', { class: 'matrix' }, h('tr', {}, h('th'), ...outputs.map((o) => h('th', {}, label(o)))),
       ...inputs.map((i) => h('tr', {}, h('th', {}, label(i)), ...outputs.map((o) => {
         const b = h('button', { title: i === 'Chat' && o === 'ChatMic' ? 'Not routable' : `${label(i)} to ${label(o)}`, 'aria-label': `${label(i)} to ${label(o)}`, disabled: i === 'Chat' && o === 'ChatMic', 'aria-disabled': i === 'Chat' && o === 'ChatMic' ? 'true' : null, onclick: () => cmd('SetRouter', i, o, !b.classList.contains('on')) });
         bind(b, (m) => m.router[i][o], (el, v) => el.classList.toggle('on', !!v));
@@ -445,8 +444,8 @@ function pollMic(cb) {
 const SUN = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
 const MOON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
 const curTheme = () => document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-function themeButton(extra = '') {
-  const b = h('button', { class: ('theme ' + extra).trim(), title: 'Toggle dark mode', 'aria-label': 'Toggle dark mode' });
+function themeButton() {
+  const b = h('button', { class: 'theme', title: 'Toggle dark mode', 'aria-label': 'Toggle dark mode' });
   const paint = () => { b.innerHTML = (curTheme() === 'dark' ? SUN : MOON) + '<span>' + (curTheme() === 'dark' ? 'Light mode' : 'Dark mode') + '</span>'; };
   b.onclick = () => { const n = curTheme() === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = n; try { localStorage.setItem('theme', n); } catch { /* storage blocked */ } paint(); };
   paint();
@@ -461,7 +460,6 @@ function renderTop() {
     m && Object.keys(m).length > 1 ? sel(null, Object.keys(m).map((s) => [s, `${m[s].hardware.device_type} ${s}`]), () => S.serial, (v) => { S.serial = v; render(); }) : null,
     mixer() ? h('span', { class: 'muted' }, `Profile: ${mixer().profile_name}  \u00b7  Mic: ${mixer().mic_profile_name}`) : null,
     h('span', {}, h('i', { class: 'dot' + (S.online ? ' ok' : '') }), S.online ? 'Connected' : 'Offline'),
-    themeButton('top-theme'),
   ].filter(Boolean));
   document.querySelectorAll('#nav button[data-v]').forEach((b) => b.classList.toggle('on', b.dataset.v === S.view));
 }
