@@ -434,6 +434,17 @@ function pollMic(cb) {
   }, 120);
 }
 
+const SUN = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+const MOON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+const curTheme = () => document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+function themeButton() {
+  const b = h('button', { class: 'theme', title: 'Toggle dark mode', 'aria-label': 'Toggle dark mode' });
+  const paint = () => { b.innerHTML = (curTheme() === 'dark' ? SUN : MOON) + '<span>' + (curTheme() === 'dark' ? 'Light mode' : 'Dark mode') + '</span>'; };
+  b.onclick = () => { const n = curTheme() === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = n; try { localStorage.setItem('theme', n); } catch { /* storage blocked */ } paint(); };
+  paint();
+  return b;
+}
+
 function renderTop() {
   const t = $('#top');
   const m = S.status?.mixers;
@@ -442,7 +453,7 @@ function renderTop() {
     m && Object.keys(m).length > 1 ? sel(null, Object.keys(m).map((s) => [s, `${m[s].hardware.device_type} ${s}`]), () => S.serial, (v) => { S.serial = v; render(); }) : null,
     mixer() ? h('span', { class: 'muted' }, `${mixer().profile_name} / ${mixer().mic_profile_name}`) : null,
     h('span', {}, h('i', { class: 'dot' + (S.online ? ' ok' : '') }), S.online ? 'Connected' : 'Offline'),
-    btn('Theme', () => { const r = document.documentElement; const n = r.dataset.theme === 'light' ? 'dark' : 'light'; r.dataset.theme = n; try { localStorage.setItem('theme', n); } catch { /* storage blocked */ } })].filter(Boolean));
+  ].filter(Boolean));
   document.querySelectorAll('#nav button[data-v]').forEach((b) => b.classList.toggle('on', b.dataset.v === S.view));
 }
 
@@ -450,8 +461,9 @@ function render() {
   bound = [];
   clearInterval(micTimer);
   const nav = $('#nav');
-  nav.replaceChildren(h('div', { class: 'brand' }, 'GoXLR ', h('b', {}, 'Utility')),
-    ...NAV.map(([v, t]) => h('button', { 'data-v': v, onclick: () => { S.view = v; try { location.hash = v; } catch { /* ignore */ } render(); } }, t)));
+  nav.replaceChildren(h('div', { class: 'brand' }, h('img', { src: '/icon.svg', alt: '', width: 28, height: 28 }), h('span', {}, 'GoXLR ', h('b', {}, 'Utility'))),
+    ...NAV.map(([v, t]) => h('button', { 'data-v': v, onclick: () => { S.view = v; try { location.hash = v; } catch { /* ignore */ } render(); } }, t)),
+    h('div', { class: 'sp' }), themeButton());
   renderTop();
   const view = $('#view');
   if (!S.status) return view.replaceChildren(h('div', { class: 'empty' }, 'Connecting to daemon...'));
