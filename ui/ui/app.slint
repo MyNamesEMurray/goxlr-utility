@@ -101,7 +101,7 @@ component CtlRow inherits Rectangle {
     if c.kind == 6: HorizontalLayout {
         spacing: 12px;
         Text { text: c.label; width: 200px; color: Theme.mute; vertical-alignment: center; }
-        Field { text: c.text; placeholder: c.unit; committed(t) => { root.event(c.key, 0, t); } }
+        Field { field-width: 380px; text: c.text; placeholder: c.unit; committed(t) => { root.event(c.key, 0, t); } }
         Rectangle { }
     }
     if c.kind == 7: HorizontalLayout {

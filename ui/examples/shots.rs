@@ -34,7 +34,7 @@ fn main() {
     ui.show().unwrap();
     with_app(|a| a.on_status(Some(st)));
     let names = ["mixer", "routing", "mic", "effects", "sampler", "lighting", "profiles", "settings"];
-    let tabs: [&[i32]; 8] = [&[0], &[0], &[0, 1, 2, 3], &[0, 1, 6], &[0, 3], &[0, 1, 2, 3], &[0, 1, 2], &[0, 1, 2]];
+    let tabs: [&[i32]; 8] = [&[0], &[0], &[0, 1, 2, 3], &[0, 1, 6], &[0, 3], &[0, 1, 2, 3], &[0, 1, 2, 3], &[0, 1, 2]];
     for dark in [true, false] {
         ui.global::<Theme>().set_dark(dark);
         for (p, name) in names.iter().enumerate() {

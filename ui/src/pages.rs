@@ -1,3 +1,4 @@
+use crate::import::{self, ImportState};
 use crate::model::{C, hex_to_rgb, idx, opts, pretty};
 use crate::table;
 use goxlr_ipc::{DaemonStatus, MixerStatus, PathTypes};
@@ -19,6 +20,7 @@ pub struct Ctx<'a> {
     pub st: &'a DaemonStatus,
     pub m: &'a MixerStatus,
     pub confirm: Option<&'a str>,
+    pub imp: &'a ImportState,
 }
 
 pub fn tabs(page: u8) -> Vec<&'static str> {
@@ -27,7 +29,7 @@ pub fn tabs(page: u8) -> Vec<&'static str> {
         3 => vec!["Presets", "Reverb", "Echo", "Pitch", "Gender", "Megaphone", "Robot", "Hard tune"],
         4 => vec!["Bank A", "Bank B", "Bank C", "Files"],
         5 => vec!["Animation", "Faders", "Buttons", "Other"],
-        6 => vec!["Profiles", "Mic profiles", "Folders"],
+        6 => vec!["Profiles", "Mic profiles", "Folders", "Import"],
         7 => vec!["Mixer", "Daemon", "Device"],
         _ => vec![],
     }
@@ -277,6 +279,7 @@ pub fn profiles(c: &Ctx, tab: u8) -> Vec<C> {
     let (prefix, files, current, kind): (&str, &Vec<String>, &str, &str) = match tab {
         0 => ("prof", &c.st.files.profiles, &c.m.profile_name, "profile"),
         1 => ("mprof", &c.st.files.mic_profiles, &c.m.mic_profile_name, "mic profile"),
+        3 => return import_rows(c),
         _ => {
             let mut out = vec![];
             for (i, (_, name)) in PATHS.iter().enumerate() {
@@ -376,4 +379,34 @@ impl CfgIdx for goxlr_ipc::DaemonConfig {
             goxlr_ipc::FirmwareSource::Beta => 1,
         }
     }
+}
+
+fn import_rows(c: &Ctx) -> Vec<C> {
+    let s = c.imp;
+    let mut out = vec![
+        C::heading("Import from the official GoXLR app"),
+        C::note("Copies profiles and mic profiles into this utility. Close the official app first."),
+        C::field("imp.path", "Folder to import from", &s.path),
+        C::button("imp.scan", "", "Scan for profiles", false),
+        C::toggle("imp.over", "Replace existing files", s.overwrite),
+    ];
+    if s.scanned && s.files.is_empty() {
+        out.push(C::info("Result", "No profiles found in that folder."));
+        return out;
+    }
+    if !s.files.is_empty() {
+        out.push(C::heading(&format!("Found {} files", s.files.len())));
+        for (i, f) in s.files.iter().enumerate() {
+            let exists = import::dest_exists(f, &c.st.paths.profile_directory, &c.st.paths.mic_profile_directory);
+            let kind = if f.mic { "mic profile" } else { "profile" };
+            let note = if exists { ", already exists" } else { "" };
+            out.push(C::toggle(&format!("imp.sel.{i}"), &format!("{} ({kind}{note})", f.name()), f.selected));
+        }
+        let n = s.files.iter().filter(|f| f.selected).count();
+        out.push(C::button("imp.go", "", &format!("Import {n} selected"), false));
+    }
+    if !s.msg.is_empty() {
+        out.push(C::info("Result", &s.msg));
+    }
+    out
 }

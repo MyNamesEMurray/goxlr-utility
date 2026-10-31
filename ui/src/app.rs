@@ -1,3 +1,4 @@
+use crate::import::{self, ImportState};
 use crate::model::{C, nth, pretty, sync};
 use crate::pages::{self, Ctx, LOG_LEVELS, PATHS};
 use crate::table;
@@ -35,6 +36,8 @@ pub struct App {
     prev_matrix: Vec<Vec<i32>>,
     last_mic: Option<String>,
     apply_timer: Timer,
+    imp: ImportState,
+    imp_init: bool,
 }
 
 fn fader_by_name(s: &str) -> Option<FaderName> {
@@ -67,6 +70,8 @@ impl App {
             prev_matrix: vec![],
             last_mic: None,
             apply_timer: Timer::default(),
+            imp: ImportState::default(),
+            imp_init: false,
             models,
         };
         ui.set_mixer_ctls(app.models[0].clone().into());
@@ -147,6 +152,13 @@ impl App {
         let page = ui.get_page() as u8;
         let tab = Self::tab_of(&ui, page);
 
+        if page == 6 && tab == 3 && !self.imp_init {
+            self.imp_init = true;
+            if let Some(p) = import::first_existing() {
+                self.imp.path = p.to_string_lossy().into_owned();
+                self.scan_import();
+            }
+        }
         let want_mic = if page == 0 || page == 2 { self.serial.clone().filter(|_| self.status.is_some()) } else { None };
         if want_mic != self.last_mic {
             let _ = self.tx.send(Msg::Mic(want_mic.clone()));
@@ -166,7 +178,7 @@ impl App {
             None if page == 7 => pages::settings(st, None, self.confirm.as_deref(), tab),
             None => vec![C::note("No GoXLR detected. Plug in a device and it will appear here.")],
             Some(m) => {
-                let c = Ctx { st, m, confirm: self.confirm.as_deref() };
+                let c = Ctx { st, m, confirm: self.confirm.as_deref(), imp: &self.imp };
                 match page {
                     0 => {
                         strips = Some(
@@ -225,6 +237,39 @@ impl App {
                 self.prev_matrix = rows;
             }
         }
+    }
+
+    fn scan_import(&mut self) {
+        let path = self.imp.path.trim().to_string();
+        self.imp.files = if path.is_empty() { vec![] } else { import::scan(std::path::Path::new(&path)) };
+        self.imp.scanned = !path.is_empty();
+        self.imp.msg.clear();
+    }
+
+    fn import_event(&mut self, parts: &[&str], value: f32, text: &str) {
+        match parts {
+            ["imp", "path"] => {
+                self.imp.path = text.trim().to_string();
+                self.scan_import();
+            }
+            ["imp", "scan"] => self.scan_import(),
+            ["imp", "over"] => self.imp.overwrite = value > 0.5,
+            ["imp", "sel", i] => {
+                if let Some(f) = i.parse::<usize>().ok().and_then(|i| self.imp.files.get_mut(i)) {
+                    f.selected = value > 0.5;
+                }
+            }
+            ["imp", "go"] => {
+                if let Some(st) = &self.status {
+                    self.imp.msg = import::run(&self.imp.files, self.imp.overwrite, &st.paths.profile_directory, &st.paths.mic_profile_directory);
+                }
+            }
+            _ => {}
+        }
+        for p in &mut self.prev {
+            p.clear();
+        }
+        self.refresh();
     }
 
     fn cmd(&self, c: G) {
@@ -317,6 +362,11 @@ impl App {
             self.confirm = None;
         } else if self.confirm.take().is_some() {
             self.refresh();
+        }
+        if key.starts_with("imp.") {
+            let parts: Vec<&str> = key.split('.').collect();
+            self.import_event(&parts, value, text);
+            return;
         }
         self.touch(key);
         self.optimistic(key, value);
