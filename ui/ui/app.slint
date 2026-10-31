@@ -1,0 +1,520 @@
+import { Theme, Ctl, Btn, Toggle, HSlider, VSlider, Choice, Seg, Swatch, Field } from "components.slint";
+export { Ctl, Theme }
+
+export struct Strip {
+    key: string,
+    name: string,
+    fader: string,
+    volume: float,
+    muted: bool,
+}
+
+component CtlRow inherits Rectangle {
+    in property <Ctl> c;
+    callback event(string, float, string);
+    height: c.kind == 4 ? 52px : (c.kind == 9 ? 30px : 40px);
+
+    if c.kind == 4: VerticalLayout {
+        alignment: end;
+        padding-bottom: 6px;
+        Text { text: c.label; font-size: 15px; font-weight: 600; color: Theme.text; }
+        Rectangle { height: 1px; background: Theme.line; }
+    }
+    if c.kind == 0: HorizontalLayout {
+        spacing: 12px;
+        Text { text: c.label; width: 150px; color: Theme.mute; vertical-alignment: center; }
+        HSlider {
+            value: c.value;
+            min: c.min;
+            max: c.max;
+            step: c.step;
+            edited(v) => { root.event(c.key, v, ""); }
+        }
+        Text {
+            width: 84px;
+            horizontal-alignment: right;
+            vertical-alignment: center;
+            color: Theme.text;
+            text: (c.step < 1 ? "\{Math.round(c.value * 10) / 10}" : "\{Math.round(c.value)}") + c.unit;
+        }
+    }
+    if c.kind == 11: HorizontalLayout {
+        spacing: 12px;
+        Text { text: c.label; width: 150px; color: Theme.mute; vertical-alignment: center; }
+        HSlider {
+            value: c.value;
+            min: c.min;
+            max: c.max;
+            step: c.step;
+            edited(v) => { root.event(c.key, v, ""); }
+        }
+        Text {
+            width: 50px;
+            horizontal-alignment: right;
+            vertical-alignment: center;
+            color: Theme.text;
+            text: "\{Math.round(c.value / 2.55)}%";
+        }
+        VerticalLayout {
+            alignment: center;
+            Toggle { checked: c.checked; toggled(v) => { root.event(c.text, v ? 1 : 0, ""); } }
+        }
+        Text { text: "Link"; width: 34px; color: Theme.mute; vertical-alignment: center; }
+    }
+    if c.kind == 1: HorizontalLayout {
+        spacing: 12px;
+        Text { text: c.label; width: 150px; color: Theme.mute; vertical-alignment: center; }
+        VerticalLayout {
+            alignment: center;
+            Toggle { checked: c.checked; toggled(v) => { root.event(c.key, v ? 1 : 0, ""); } }
+        }
+        Rectangle { }
+    }
+    if c.kind == 2: HorizontalLayout {
+        spacing: 12px;
+        Text { text: c.label; width: 150px; color: Theme.mute; vertical-alignment: center; }
+        Choice {
+            width: 220px;
+            options: c.options;
+            current: c.index;
+            picked(i) => { root.event(c.key, i, ""); }
+        }
+        Rectangle { }
+    }
+    if c.kind == 3: HorizontalLayout {
+        spacing: 12px;
+        Text { text: c.label; width: 150px; color: Theme.mute; vertical-alignment: center; }
+        Seg { options: c.options; current: c.index; picked(i) => { root.event(c.key, i, ""); } }
+    }
+    if c.kind == 5: HorizontalLayout {
+        spacing: 12px;
+        Text { text: c.label; width: 150px; color: Theme.mute; vertical-alignment: center; }
+        for col[i] in c.colours: VerticalLayout {
+            alignment: center;
+            Swatch {
+                colour: col;
+                picked(r, g, b) => { root.event("\{c.key}:\{i}", r * 65536 + g * 256 + b, ""); }
+            }
+        }
+        Rectangle { }
+    }
+    if c.kind == 6: HorizontalLayout {
+        spacing: 12px;
+        Text { text: c.label; width: 150px; color: Theme.mute; vertical-alignment: center; }
+        Field { text: c.text; placeholder: c.unit; committed(t) => { root.event(c.key, 0, t); } }
+        Rectangle { }
+    }
+    if c.kind == 7: HorizontalLayout {
+        spacing: 12px;
+        Text { text: c.label; width: 150px; color: Theme.mute; vertical-alignment: center; }
+        Btn { text: c.text; danger: c.checked; clicked => { root.event(c.key, 0, ""); } }
+        Rectangle { }
+    }
+    if c.kind == 8: HorizontalLayout {
+        spacing: 12px;
+        Text { text: c.label; width: 150px; color: Theme.mute; vertical-alignment: center; }
+        Text { text: c.text; color: Theme.text; vertical-alignment: center; }
+    }
+    if c.kind == 9: HorizontalLayout {
+        Rectangle { width: 162px; }
+        Text {
+            text: c.label;
+            color: Theme.mute;
+            font-size: 12px;
+            vertical-alignment: center;
+            horizontal-alignment: left;
+            overflow: elide;
+        }
+    }
+    if c.kind == 10: HorizontalLayout {
+        spacing: 10px;
+        Text { text: c.label; color: Theme.text; vertical-alignment: center; horizontal-stretch: 1; overflow: elide; }
+        if c.checked: Text { text: "Active"; color: Theme.accent-text; vertical-alignment: center; font-weight: 600; }
+        VerticalLayout {
+            alignment: center;
+            Btn { text: c.options[0]; enabled: c.enabled; clicked => { root.event("\{c.key}|0", 0, ""); } }
+        }
+        VerticalLayout {
+            alignment: center;
+            Btn { text: c.options[1]; danger: true; clicked => { root.event("\{c.key}|1", 0, ""); } }
+        }
+    }
+}
+
+component CtlColumn inherits VerticalLayout {
+    in property <[Ctl]> ctls;
+    callback event(string, float, string);
+    for c in ctls: CtlRow {
+        c: c;
+        event(k, v, t) => { root.event(k, v, t); }
+    }
+}
+
+component TabPage inherits Rectangle {
+    in property <[string]> tabs;
+    in-out property <int> tab;
+    in property <[Ctl]> ctls;
+    callback event(string, float, string);
+    callback tab-changed(int);
+    VerticalLayout {
+        spacing: 8px;
+        if tabs.length > 1: Seg {
+            options: tabs;
+            current: tab;
+            picked(i) => { root.tab = i; root.tab-changed(i); }
+        }
+        Flickable {
+            content-height: col.preferred-height + 24px;
+            col := CtlColumn {
+                x: 0;
+                width: min(root.width - 12px, 860px);
+                ctls: root.ctls;
+                event(k, v, t) => { root.event(k, v, t); }
+            }
+        }
+    }
+}
+
+component StripView inherits Rectangle {
+    in property <Strip> s;
+    callback volume(string, float);
+    callback mute(string);
+    min-width: 62px;
+    horizontal-stretch: 1;
+    height: 330px;
+    border-radius: 12px;
+    background: Theme.panel;
+    VerticalLayout {
+        padding: 8px;
+        padding-top: 12px;
+        spacing: 6px;
+        Text { text: s.name; color: Theme.text; font-weight: 600; font-size: 11px; horizontal-alignment: center; overflow: elide; }
+        Text {
+            text: s.fader == "" ? "No fader" : "Fader \{s.fader}";
+            color: s.fader == "" ? Theme.mute : Theme.accent-text;
+            font-size: 11px;
+            horizontal-alignment: center;
+        }
+        HorizontalLayout {
+            alignment: center;
+            VSlider {
+                height: 190px;
+                min: 0;
+                max: 255;
+                value: s.volume;
+                edited(v) => { root.volume(s.key, v); }
+            }
+        }
+        Text { text: "\{Math.round(s.volume / 2.55)}%"; color: Theme.mute; font-size: 12px; horizontal-alignment: center; }
+        Btn {
+            text: "Mute";
+            min-width: 0px;
+            pad: 2px;
+            accent: s.muted;
+            enabled: s.fader != "";
+            clicked => { root.mute(s.key); }
+        }
+    }
+}
+
+component MixerPage inherits Rectangle {
+    in property <[Strip]> strips;
+    in property <[Ctl]> ctls;
+    in property <float> level;
+    callback volume(string, float);
+    callback mute(string);
+    callback event(string, float, string);
+    Flickable {
+        content-height: lay.preferred-height + 24px;
+        lay := VerticalLayout {
+            x: 0;
+            width: min(root.width - 12px, 1100px);
+            spacing: 14px;
+            Flickable {
+                height: 340px;
+                strip-row := HorizontalLayout {
+                    spacing: 8px;
+                    for s in root.strips: StripView {
+                        s: s;
+                        volume(k, v) => { root.volume(k, v); }
+                        mute(k) => { root.mute(k); }
+                    }
+                }
+            }
+            HorizontalLayout {
+                spacing: 12px;
+                Text { text: "Mic level"; width: 150px; color: Theme.mute; vertical-alignment: center; }
+                VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        height: 8px;
+                        border-radius: 4px;
+                        background: Theme.line;
+                        clip: true;
+                        Rectangle {
+                            x: 0;
+                            width: parent.width * Math.clamp(root.level, 0, 1);
+                            background: @linear-gradient(90deg, Theme.accent 0%, #ffb454 70%, Theme.danger 100%);
+                        }
+                    }
+                }
+            }
+            CtlColumn {
+                ctls: root.ctls;
+                event(k, v, t) => { root.event(k, v, t); }
+            }
+        }
+    }
+}
+
+component RoutingPage inherits Rectangle {
+    in property <[string]> inputs;
+    in property <[string]> outputs;
+    in property <[[int]]> matrix;
+    in property <[Ctl]> ctls;
+    callback route(int, int, bool);
+    callback event(string, float, string);
+    Flickable {
+        content-height: lay.preferred-height + 24px;
+        lay := VerticalLayout {
+            x: 0;
+            width: min(root.width - 12px, 1000px);
+            spacing: 4px;
+            HorizontalLayout {
+                Rectangle { width: 130px; height: 28px; }
+                for o in root.outputs: Text {
+                    text: o;
+                    color: Theme.mute;
+                    font-size: 12px;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                    horizontal-stretch: 1;
+                }
+            }
+            for row[ri] in root.matrix: Rectangle {
+                height: 36px;
+                Rectangle { y: 0; height: 1px; background: Theme.line; }
+                HorizontalLayout {
+                    Text { text: root.inputs[ri]; width: 130px; color: Theme.text; vertical-alignment: center; }
+                    for v[ci] in row: Rectangle {
+                        horizontal-stretch: 1;
+                        Rectangle {
+                            width: 24px;
+                            height: 24px;
+                            border-radius: 12px;
+                            background: v == 1 ? Theme.accent : transparent;
+                            border-width: v == 1 ? 0px : 2px;
+                            border-color: v == 2 ? Theme.track : (dot.has-hover ? Theme.mute : Theme.track);
+                            opacity: v == 2 ? 0.5 : 1;
+                            dot := TouchArea {
+                                mouse-cursor: v == 2 ? default : pointer;
+                                clicked => { if (v != 2) { root.route(ri, ci, v != 1); } }
+                            }
+                        }
+                    }
+                }
+            }
+            CtlColumn {
+                ctls: root.ctls;
+                event(k, v, t) => { root.event(k, v, t); }
+            }
+        }
+    }
+}
+
+export component AppWindow inherits Window {
+    title: "GoXLR Utility";
+    icon: @image-url("../assets/icon.png");
+    preferred-width: 1180px;
+    preferred-height: 800px;
+    min-width: 900px;
+    min-height: 600px;
+    background: Theme.bg;
+    default-font-size: 14px;
+
+    in-out property <int> page;
+    in property <bool> online;
+    in property <string> device-text;
+    in property <string> error-text;
+    in property <[string]> nav: ["Mixer", "Routing", "Microphone", "Effects", "Sampler", "Lighting", "Profiles", "Settings"];
+
+    in property <[Strip]> strips;
+    in property <[Ctl]> mixer-ctls;
+    in property <float> mic-level;
+    in property <[string]> inputs;
+    in property <[string]> outputs;
+    in property <[[int]]> matrix;
+    in property <[Ctl]> routing-ctls;
+
+    in property <[string]> mic-tabs: ["Input", "Gate", "Compressor", "Equaliser"];
+    in-out property <int> mic-tab;
+    in property <[Ctl]> mic-ctls;
+    in property <[string]> fx-tabs: ["Presets", "Reverb", "Echo", "Pitch", "Gender", "Megaphone", "Robot", "Hard tune"];
+    in-out property <int> fx-tab;
+    in property <[Ctl]> fx-ctls;
+    in property <[string]> sampler-tabs: ["Bank A", "Bank B", "Bank C", "Files"];
+    in-out property <int> sampler-tab;
+    in property <[Ctl]> sampler-ctls;
+    in property <[string]> light-tabs: ["Animation", "Faders", "Buttons", "Other"];
+    in-out property <int> light-tab;
+    in property <[Ctl]> light-ctls;
+    in property <[string]> profile-tabs: ["Profiles", "Mic profiles", "Folders"];
+    in-out property <int> profile-tab;
+    in property <[Ctl]> profile-ctls;
+    in property <[string]> settings-tabs: ["Mixer", "Daemon", "Device"];
+    in-out property <int> settings-tab;
+    in property <[Ctl]> settings-ctls;
+
+    callback event(string, float, string);
+    callback tab-changed(int, int);
+    callback strip-volume(string, float);
+    callback strip-mute(string);
+    callback route(int, int, bool);
+    callback page-changed(int);
+
+    HorizontalLayout {
+        Rectangle {
+            width: 208px;
+            background: Theme.bg;
+            Rectangle { x: parent.width - 1px; width: 1px; background: Theme.line; }
+            VerticalLayout {
+                padding: 12px;
+                padding-top: 18px;
+                spacing: 2px;
+                HorizontalLayout {
+                    spacing: 10px;
+                    padding-left: 10px;
+                    padding-bottom: 20px;
+                    Image { source: @image-url("../assets/icon.png"); width: 28px; height: 28px; }
+                    Text {
+                        text: "GoXLR Utility";
+                        color: Theme.text;
+                        font-weight: 700;
+                        font-size: 15px;
+                        vertical-alignment: center;
+                    }
+                }
+                for n[i] in root.nav: Rectangle {
+                    height: 36px;
+                    border-radius: 8px;
+                    background: i == root.page ? Theme.panel : (nt.has-hover ? Theme.panel : transparent);
+                    if i == root.page: Rectangle { x: 0; y: 6px; width: 3px; height: parent.height - 12px; background: Theme.accent; }
+                    Text {
+                        x: 14px;
+                        text: n;
+                        color: i == root.page ? Theme.text : Theme.mute;
+                        font-weight: i == root.page ? 600 : 400;
+                        vertical-alignment: center;
+                    }
+                    nt := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => { root.page = i; root.page-changed(i); }
+                    }
+                }
+                Rectangle { }
+                HorizontalLayout {
+                    spacing: 10px;
+                    padding-left: 6px;
+                    padding-bottom: 6px;
+                    VerticalLayout {
+                        alignment: center;
+                        Toggle { checked: Theme.dark; toggled(v) => { Theme.dark = v; } }
+                    }
+                    Text { text: Theme.dark ? "Dark mode" : "Light mode"; color: Theme.mute; vertical-alignment: center; }
+                }
+            }
+        }
+        VerticalLayout {
+            padding-left: 28px;
+            padding-right: 20px;
+            padding-top: 14px;
+            spacing: 10px;
+            HorizontalLayout {
+                height: 40px;
+                Text {
+                    text: root.nav[root.page];
+                    color: Theme.text;
+                    font-size: 22px;
+                    font-weight: 700;
+                    vertical-alignment: center;
+                    horizontal-stretch: 1;
+                }
+                Text { text: root.error-text; color: Theme.danger; vertical-alignment: center; overflow: elide; }
+                Rectangle { width: 16px; }
+                Text { text: root.device-text; color: Theme.mute; vertical-alignment: center; }
+                Rectangle {
+                    width: 24px;
+                    Rectangle {
+                        width: 9px;
+                        height: 9px;
+                        border-radius: 5px;
+                        background: root.online ? Theme.accent : Theme.danger;
+                    }
+                }
+                Text {
+                    text: root.online ? "Connected" : "Daemon not running";
+                    color: Theme.text;
+                    vertical-alignment: center;
+                }
+            }
+            if root.page == 0: MixerPage {
+                strips: root.strips;
+                ctls: root.mixer-ctls;
+                level: root.mic-level;
+                volume(k, v) => { root.strip-volume(k, v); }
+                mute(k) => { root.strip-mute(k); }
+                event(k, v, t) => { root.event(k, v, t); }
+            }
+            if root.page == 1: RoutingPage {
+                inputs: root.inputs;
+                outputs: root.outputs;
+                matrix: root.matrix;
+                ctls: root.routing-ctls;
+                route(i, o, on) => { root.route(i, o, on); }
+                event(k, v, t) => { root.event(k, v, t); }
+            }
+            if root.page == 2: TabPage {
+                tabs: root.mic-tabs;
+                tab <=> root.mic-tab;
+                ctls: root.mic-ctls;
+                tab-changed(i) => { root.tab-changed(2, i); }
+                event(k, v, t) => { root.event(k, v, t); }
+            }
+            if root.page == 3: TabPage {
+                tabs: root.fx-tabs;
+                tab <=> root.fx-tab;
+                ctls: root.fx-ctls;
+                tab-changed(i) => { root.tab-changed(3, i); }
+                event(k, v, t) => { root.event(k, v, t); }
+            }
+            if root.page == 4: TabPage {
+                tabs: root.sampler-tabs;
+                tab <=> root.sampler-tab;
+                ctls: root.sampler-ctls;
+                tab-changed(i) => { root.tab-changed(4, i); }
+                event(k, v, t) => { root.event(k, v, t); }
+            }
+            if root.page == 5: TabPage {
+                tabs: root.light-tabs;
+                tab <=> root.light-tab;
+                ctls: root.light-ctls;
+                tab-changed(i) => { root.tab-changed(5, i); }
+                event(k, v, t) => { root.event(k, v, t); }
+            }
+            if root.page == 6: TabPage {
+                tabs: root.profile-tabs;
+                tab <=> root.profile-tab;
+                ctls: root.profile-ctls;
+                tab-changed(i) => { root.tab-changed(6, i); }
+                event(k, v, t) => { root.event(k, v, t); }
+            }
+            if root.page == 7: TabPage {
+                tabs: root.settings-tabs;
+                tab <=> root.settings-tab;
+                ctls: root.settings-ctls;
+                tab-changed(i) => { root.tab-changed(7, i); }
+                event(k, v, t) => { root.event(k, v, t); }
+            }
+        }
+    }
+}

@@ -92,6 +92,18 @@ prefer to use it, check out the [GoXLR UI Repository](https://github.com/frostyC
 provides various builds for distributions. Once installed, you should be able to go to System -> Utility Settings
 and change the UI Handler there.
 
+### Native UI (`goxlr-ui`)
+
+The `ui` crate is a native desktop application built with [Slint](https://slint.dev) (software renderer, no web
+engine). It talks to the running daemon over the local IPC socket, so it needs no browser and no HTTP server. If a
+`goxlr-ui` binary sits next to the daemon executable, the tray 'Open UI' action starts it instead of opening a browser.
+
+```
+cargo run --release -p goxlr-ui
+```
+
+Slint is used under its royalty-free desktop licence terms; check that they suit how you distribute builds.
+
 ## Building
 
 Build instructions and other useful information can be found on the

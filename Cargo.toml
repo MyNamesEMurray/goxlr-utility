@@ -3,6 +3,7 @@ resolver = "2"
 
 members = [
     "launcher",
+    "ui",
     "usb",
     "daemon",
     "audio",

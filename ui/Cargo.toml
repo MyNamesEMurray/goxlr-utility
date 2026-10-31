@@ -1,0 +1,36 @@
+[package]
+name = "goxlr-ui"
+description = "Native desktop interface for the GoXLR Utility daemon."
+build = "build.rs"
+
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "goxlr-ui"
+path = "src/main.rs"
+
+[dependencies]
+goxlr-ipc = { path = "../ipc" }
+goxlr-types = { path = "../types", features = ["serde"] }
+
+slint = { version = "1.18", default-features = false, features = ["std", "backend-winit", "renderer-software", "software-renderer-systemfonts", "compat-1-2"] }
+
+anyhow = { workspace = true }
+tokio = { workspace = true }
+interprocess = { workspace = true }
+serde_json = { workspace = true }
+strum = { workspace = true }
+enum-map = { workspace = true }
+
+[build-dependencies]
+slint-build = "1.18"
+
+[dev-dependencies]
+png = "0.17"

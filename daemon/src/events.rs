@@ -114,7 +114,7 @@ pub async fn spawn_event_handler(
                         };
                     },
                     EventTriggers::OpenUi => {
-                        if let Err(error) = open::that(get_util_url(&state)) {
+                        if let Err(error) = open_default(&get_util_url(&state)) {
                             warn!("Error Opening URL: {:?}", error);
                         }
                     },
@@ -146,14 +146,14 @@ pub async fn spawn_event_handler(
 
                                         if let Err(error) = result {
                                             warn!("Error Executing command: {:?}, falling back", error);
-                                            if let Err(error) = open::that(url) {
+                                            if let Err(error) = open_default(&url) {
                                                 warn!("Error Opening URL: {:?}", error);
                                             }
                                         }
                                     }
                                 },
                                 None => {
-                                    if let Err(error) = open::that(url) {
+                                    if let Err(error) = open_default(&url) {
                                         warn!("Error Opening URL: {:?}", error);
                                     }
                                 }
@@ -177,17 +177,17 @@ pub async fn spawn_event_handler(
 
                                         if let Err(error) = result {
                                             warn!("Error Executing command: {:?}, falling back", error);
-                                            if let Err(error) = open::that(url) {
+                                            if let Err(error) = open_default(&url) {
                                                 warn!("Error Opening URL: {:?}", error);
                                             }
                                         }
 
-                                    } else if let Err(error) = open::that(url) {
+                                    } else if let Err(error) = open_default(&url) {
                                         warn!("Error Opening URL: {:?}", error);
                                     }
                                 },
                                 None => {
-                                    if let Err(error) = open::that(url) {
+                                    if let Err(error) = open_default(&url) {
                                         warn!("Error Opening URL: {:?}", error);
                                     }
                                 }
@@ -199,6 +199,20 @@ pub async fn spawn_event_handler(
             },
         }
     }
+}
+
+fn launch_native_ui() -> bool {
+    let Ok(exe) = std::env::current_exe() else { return false };
+    let name = if cfg!(windows) { "goxlr-ui.exe" } else { "goxlr-ui" };
+    let Some(path) = exe.parent().map(|d| d.join(name)) else { return false };
+    path.exists() && Command::new(path).stdout(Stdio::null()).stderr(Stdio::null()).spawn().is_ok()
+}
+
+fn open_default(url: &str) -> std::io::Result<()> {
+    if launch_native_ui() {
+        return Ok(());
+    }
+    open::that(url)
 }
 
 fn get_util_url(state: &DaemonState) -> String {

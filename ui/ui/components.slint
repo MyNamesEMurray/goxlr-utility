@@ -1,0 +1,365 @@
+export global Theme {
+    in-out property <bool> dark: true;
+    out property <color> bg: dark ? #0d1117 : #f2f4f8;
+    out property <color> panel: dark ? #1a2030 : #ffffff;
+    out property <color> panel2: dark ? #262e3d : #eef1f6;
+    out property <color> line: dark ? #343d4c : #d3d9e3;
+    out property <color> track: dark ? #4a5363 : #8f99aa;
+    out property <color> text: dark ? #e8ecf2 : #171c29;
+    out property <color> mute: dark ? #9aa5b6 : #586277;
+    out property <color> accent: dark ? #2fd0b5 : #0fae94;
+    out property <color> accent-text: dark ? #43e0c6 : #076a5b;
+    out property <color> on-accent: #04120f;
+    out property <color> danger: dark ? #ff6b7a : #c4283d;
+}
+
+export struct Ctl {
+    kind: int,
+    label: string,
+    key: string,
+    min: float,
+    max: float,
+    step: float,
+    value: float,
+    checked: bool,
+    unit: string,
+    text: string,
+    options: [string],
+    index: int,
+    colours: [color],
+    enabled: bool,
+}
+
+export component Btn inherits Rectangle {
+    in property <string> text;
+    in property <bool> accent;
+    in property <bool> danger;
+    in property <bool> enabled: true;
+    in property <length> pad: 12px;
+    callback clicked;
+    height: 30px;
+    min-width: 60px;
+    border-radius: 8px;
+    border-width: 1px;
+    border-color: accent ? Theme.accent : Theme.line;
+    background: accent ? Theme.accent : (ta.has-hover && enabled ? Theme.line : Theme.panel2);
+    opacity: enabled ? 1 : 0.45;
+    Text {
+        text: root.text;
+        color: root.accent ? Theme.on-accent : (root.danger ? Theme.danger : Theme.text);
+        font-weight: root.accent ? 600 : 400;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        x: root.pad;
+        width: parent.width - 2 * root.pad;
+    }
+    ta := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+    preferred-width: max(60px, txt-width.width + 24px);
+    txt-width := Text { text: root.text; visible: false; }
+}
+
+export component Toggle inherits Rectangle {
+    in property <bool> checked;
+    callback toggled(bool);
+    width: 38px;
+    height: 22px;
+    border-radius: 11px;
+    background: checked ? Theme.accent : Theme.track;
+    Rectangle {
+        x: root.checked ? parent.width - self.width - 3px : 3px;
+        y: 3px;
+        width: 16px;
+        height: 16px;
+        border-radius: 8px;
+        background: white;
+        animate x { duration: 120ms; }
+    }
+    TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.toggled(!root.checked); }
+    }
+}
+
+export component HSlider inherits Rectangle {
+    in property <float> value;
+    in property <float> min: 0;
+    in property <float> max: 100;
+    in property <float> step: 1;
+    callback edited(float);
+    height: 24px;
+    property <length> pad: 9px;
+    property <float> span: max - min;
+    property <bool> bipolar: min < 0 && max > 0;
+    property <float> f-val: span > 0 ? Math.clamp((value - min) / span, 0, 1) : 0;
+    property <float> f-zero: bipolar ? (0 - min) / span : 0;
+    property <length> usable: root.width - 2 * pad;
+    Rectangle {
+        x: pad;
+        y: parent.height / 2 - 3px;
+        width: usable;
+        height: 6px;
+        border-radius: 3px;
+        background: Theme.track;
+    }
+    Rectangle {
+        x: pad + usable * Math.min(f-zero, f-val);
+        y: parent.height / 2 - 3px;
+        width: usable * Math.abs(f-val - f-zero);
+        height: 6px;
+        background: Theme.accent;
+    }
+    Rectangle {
+        x: pad + usable * f-val - 9px;
+        y: parent.height / 2 - 9px;
+        width: 18px;
+        height: 18px;
+        border-radius: 9px;
+        background: white;
+        border-width: 3px;
+        border-color: Theme.accent;
+    }
+    ta := TouchArea {
+        mouse-cursor: pointer;
+        function apply() {
+            if (usable > 0) {
+                let f = Math.clamp((self.mouse-x - pad) / usable, 0, 1);
+                let raw = min + f * span;
+                root.edited(Math.clamp(Math.round(raw / step) * step, min, max));
+            }
+        }
+        pointer-event(e) => { if (e.kind == PointerEventKind.down) { self.apply(); } }
+        moved => { if (self.pressed) { self.apply(); } }
+    }
+}
+
+export component VSlider inherits Rectangle {
+    in property <float> value;
+    in property <float> min: 0;
+    in property <float> max: 100;
+    in property <float> step: 1;
+    callback edited(float);
+    width: 28px;
+    property <length> pad: 9px;
+    property <float> span: max - min;
+    property <bool> bipolar: min < 0 && max > 0;
+    property <float> f-val: span > 0 ? Math.clamp((value - min) / span, 0, 1) : 0;
+    property <float> f-zero: bipolar ? (0 - min) / span : 0;
+    property <length> usable: root.height - 2 * pad;
+    Rectangle {
+        x: parent.width / 2 - 3px;
+        y: pad;
+        width: 6px;
+        height: usable;
+        border-radius: 3px;
+        background: Theme.track;
+    }
+    Rectangle {
+        x: parent.width / 2 - 3px;
+        y: pad + usable * (1 - Math.max(f-zero, f-val));
+        width: 6px;
+        height: usable * Math.abs(f-val - f-zero);
+        background: Theme.accent;
+    }
+    Rectangle {
+        x: parent.width / 2 - 9px;
+        y: pad + usable * (1 - f-val) - 9px;
+        width: 18px;
+        height: 18px;
+        border-radius: 9px;
+        background: white;
+        border-width: 3px;
+        border-color: Theme.accent;
+    }
+    TouchArea {
+        mouse-cursor: pointer;
+        function apply() {
+            if (usable > 0) {
+                let f = Math.clamp(1 - (self.mouse-y - pad) / usable, 0, 1);
+                let raw = min + f * span;
+                root.edited(Math.clamp(Math.round(raw / step) * step, min, max));
+            }
+        }
+        pointer-event(e) => { if (e.kind == PointerEventKind.down) { self.apply(); } }
+        moved => { if (self.pressed) { self.apply(); } }
+    }
+}
+
+export component Choice inherits Rectangle {
+    in property <[string]> options;
+    in property <int> current;
+    callback picked(int);
+    height: 30px;
+    min-width: 150px;
+    border-radius: 8px;
+    border-width: 1px;
+    border-color: ta.has-hover ? Theme.mute : Theme.line;
+    background: Theme.panel2;
+    Text {
+        x: 12px;
+        width: parent.width - 36px;
+        text: root.current >= 0 && root.current < root.options.length ? root.options[root.current] : "Select...";
+        color: Theme.text;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    Path {
+        x: parent.width - 22px;
+        y: parent.height / 2 - 3px;
+        width: 12px;
+        height: 7px;
+        viewbox-width: 12;
+        viewbox-height: 7;
+        commands: "M 1 1 L 6 6 L 11 1";
+        stroke: Theme.mute;
+        stroke-width: 1.8px;
+    }
+    ta := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { pop.show(); }
+    }
+    pop := PopupWindow {
+        x: 0;
+        y: root.height + 2px;
+        width: root.width;
+        height: min(root.options.length * 30px + 8px, 280px);
+        Rectangle {
+            background: Theme.panel;
+            border-radius: 8px;
+            border-width: 1px;
+            border-color: Theme.line;
+            Flickable {
+                content-height: root.options.length * 30px + 8px;
+                VerticalLayout {
+                    padding: 4px;
+                    for o[i] in root.options: Rectangle {
+                        height: 30px;
+                        border-radius: 6px;
+                        background: item.has-hover ? Theme.panel2 : transparent;
+                        Text {
+                            x: 8px;
+                            text: o;
+                            color: i == root.current ? Theme.accent-text : Theme.text;
+                            font-weight: i == root.current ? 600 : 400;
+                            vertical-alignment: center;
+                        }
+                        item := TouchArea {
+                            clicked => { root.picked(i); }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+export component Seg inherits Rectangle {
+    in property <[string]> options;
+    in property <int> current;
+    callback picked(int);
+    height: 30px;
+    HorizontalLayout {
+        spacing: 6px;
+        alignment: start;
+        for o[i] in root.options: Rectangle {
+            height: 30px;
+            min-width: 40px;
+            border-radius: 8px;
+            background: i == root.current ? Theme.accent : (t.has-hover ? Theme.line : Theme.panel2);
+            Text {
+                x: 12px;
+                text: o;
+                color: i == root.current ? Theme.on-accent : Theme.text;
+                font-weight: i == root.current ? 600 : 400;
+                vertical-alignment: center;
+            }
+            preferred-width: w.width + 24px;
+            w := Text { text: o; visible: false; }
+            t := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { root.picked(i); }
+            }
+        }
+    }
+}
+
+export component Swatch inherits Rectangle {
+    in property <color> colour;
+    callback picked(int, int, int);
+    width: 28px;
+    height: 28px;
+    border-radius: 14px;
+    background: colour;
+    border-width: 2px;
+    border-color: Theme.line;
+    TouchArea {
+        mouse-cursor: pointer;
+        clicked => { pop.show(); }
+    }
+    pop := PopupWindow {
+        x: 0;
+        y: root.height + 4px;
+        width: 240px;
+        height: 150px;
+        Rectangle {
+            background: Theme.panel;
+            border-radius: 10px;
+            border-width: 1px;
+            border-color: Theme.line;
+            VerticalLayout {
+                padding: 12px;
+                spacing: 6px;
+                for ch[ci] in ["R", "G", "B"]: HorizontalLayout {
+                    spacing: 8px;
+                    Text { text: ch; color: Theme.mute; width: 14px; vertical-alignment: center; }
+                    HSlider {
+                        min: 0;
+                        max: 255;
+                        value: ci == 0 ? root.colour.red : (ci == 1 ? root.colour.green : root.colour.blue);
+                        edited(v) => {
+                            root.picked(
+                                ci == 0 ? Math.round(v) : root.colour.red,
+                                ci == 1 ? Math.round(v) : root.colour.green,
+                                ci == 2 ? Math.round(v) : root.colour.blue);
+                        }
+                    }
+                }
+                Rectangle { height: 22px; border-radius: 6px; background: root.colour; }
+            }
+        }
+    }
+}
+
+export component Field inherits Rectangle {
+    in property <string> text;
+    in property <length> field-width: 220px;
+    in property <string> placeholder;
+    callback committed(string);
+    width: field-width;
+    height: 30px;
+    border-radius: 8px;
+    border-width: 1px;
+    border-color: ti.has-focus ? Theme.accent : Theme.line;
+    background: Theme.panel2;
+    if ti.text == "" && !ti.has-focus: Text {
+        x: 10px;
+        text: root.placeholder;
+        color: Theme.mute;
+        vertical-alignment: center;
+        width: parent.width - 20px;
+        overflow: elide;
+    }
+    ti := TextInput {
+        x: 10px;
+        width: parent.width - 20px;
+        text: root.text;
+        color: Theme.text;
+        vertical-alignment: center;
+        single-line: true;
+        accepted => { root.committed(self.text); }
+        changed has-focus => { if (!self.has-focus) { root.committed(self.text); } }
+    }
+}

@@ -1,0 +1,1207 @@
+{
+ "config": {
+  "http_settings": {
+   "enabled": true,
+   "bind_address": "localhost",
+   "cors_enabled": false,
+   "port": 14564
+  },
+  "daemon_version": "1.2.4",
+  "driver_interface": {
+   "interface": "LIBUSB",
+   "version": null
+  },
+  "latest_firmware": null,
+  "locale": {
+   "user_locale": null,
+   "system_locale": "en"
+  },
+  "activation": {
+   "active_path": null,
+   "app_path": null
+  },
+  "autostart_enabled": true,
+  "show_tray_icon": true,
+  "tts_enabled": true,
+  "allow_network_access": false,
+  "log_level": "Info",
+  "firmware_source": "Live",
+  "open_ui_on_launch": false,
+  "platform": "linux",
+  "handle_macos_aggregates": false
+ },
+ "firmware": {},
+ "mixers": {
+  "S12345": {
+   "hardware": {
+    "versions": {
+     "firmware": [
+      1,
+      5,
+      2,
+      null
+     ],
+     "fpga_count": 1,
+     "dice": [
+      2,
+      0,
+      0,
+      null
+     ]
+    },
+    "serial_number": "S12345",
+    "manufactured_date": "2021-05-02",
+    "device_type": "Full",
+    "colour_way": "Black",
+    "usb_device": {
+     "manufacturer_name": "TC-Helicon",
+     "product_name": "GoXLR",
+     "version": [
+      1,
+      0,
+      0
+     ],
+     "bus_number": 1,
+     "address": 4,
+     "identifier": null
+    }
+   },
+   "shutdown_commands": [],
+   "sleep_commands": [],
+   "wake_commands": [],
+   "fader_status": {
+    "A": {
+     "channel": "Mic",
+     "mute_type": "All",
+     "scribble": {
+      "file_name": null,
+      "bottom_text": "MIC",
+      "left_text": "1",
+      "inverted": false
+     },
+     "mute_state": "Unmuted"
+    },
+    "B": {
+     "channel": "Chat",
+     "mute_type": "ToStream",
+     "scribble": null,
+     "mute_state": "MutedToX"
+    },
+    "C": {
+     "channel": "Music",
+     "mute_type": "All",
+     "scribble": null,
+     "mute_state": "Unmuted"
+    },
+    "D": {
+     "channel": "Game",
+     "mute_type": "All",
+     "scribble": null,
+     "mute_state": "Unmuted"
+    }
+   },
+   "mic_status": {
+    "mic_type": "Dynamic",
+    "mic_gains": {
+     "Dynamic": 40,
+     "Condenser": 30,
+     "Jack": 20
+    },
+    "equaliser": {
+     "gain": {
+      "Equalizer31Hz": 0,
+      "Equalizer63Hz": 0,
+      "Equalizer125Hz": 0,
+      "Equalizer250Hz": 0,
+      "Equalizer500Hz": 0,
+      "Equalizer1KHz": 0,
+      "Equalizer2KHz": 0,
+      "Equalizer4KHz": 0,
+      "Equalizer8KHz": 0,
+      "Equalizer16KHz": 0
+     },
+     "frequency": {
+      "Equalizer31Hz": 100.0,
+      "Equalizer63Hz": 100.0,
+      "Equalizer125Hz": 100.0,
+      "Equalizer250Hz": 100.0,
+      "Equalizer500Hz": 100.0,
+      "Equalizer1KHz": 100.0,
+      "Equalizer2KHz": 100.0,
+      "Equalizer4KHz": 100.0,
+      "Equalizer8KHz": 100.0,
+      "Equalizer16KHz": 100.0
+     }
+    },
+    "equaliser_mini": {
+     "gain": {
+      "Equalizer90Hz": 0,
+      "Equalizer250Hz": 0,
+      "Equalizer500Hz": 0,
+      "Equalizer1KHz": 0,
+      "Equalizer3KHz": 0,
+      "Equalizer8KHz": 0
+     },
+     "frequency": {
+      "Equalizer90Hz": 100.0,
+      "Equalizer250Hz": 100.0,
+      "Equalizer500Hz": 100.0,
+      "Equalizer1KHz": 100.0,
+      "Equalizer3KHz": 100.0,
+      "Equalizer8KHz": 100.0
+     }
+    },
+    "noise_gate": {
+     "threshold": -30,
+     "attack": 0,
+     "release": 9,
+     "enabled": true,
+     "attenuation": 60
+    },
+    "compressor": {
+     "threshold": -10,
+     "ratio": 9,
+     "attack": 9,
+     "release": 9,
+     "makeup_gain": 3
+    }
+   },
+   "levels": {
+    "submix_supported": true,
+    "output_monitor": "Headphones",
+    "volumes": {
+     "Mic": 120,
+     "LineIn": 180,
+     "Console": 120,
+     "System": 180,
+     "Game": 120,
+     "Chat": 180,
+     "Sample": 120,
+     "Music": 180,
+     "Headphones": 120,
+     "MicMonitor": 180,
+     "LineOut": 120
+    },
+    "submix": {
+     "inputs": {
+      "Mic": {
+       "volume": 100,
+       "linked": true,
+       "ratio": 1.0
+      },
+      "LineIn": {
+       "volume": 100,
+       "linked": false,
+       "ratio": 1.0
+      },
+      "Console": {
+       "volume": 100,
+       "linked": true,
+       "ratio": 1.0
+      },
+      "System": {
+       "volume": 100,
+       "linked": false,
+       "ratio": 1.0
+      },
+      "Game": {
+       "volume": 100,
+       "linked": true,
+       "ratio": 1.0
+      },
+      "Chat": {
+       "volume": 100,
+       "linked": false,
+       "ratio": 1.0
+      },
+      "Sample": {
+       "volume": 100,
+       "linked": true,
+       "ratio": 1.0
+      },
+      "Music": {
+       "volume": 100,
+       "linked": false,
+       "ratio": 1.0
+      }
+     },
+     "outputs": {
+      "Headphones": "A",
+      "BroadcastMix": "A",
+      "ChatMic": "A",
+      "Sampler": "A",
+      "LineOut": "A",
+      "StreamMix2": "A"
+     }
+    },
+    "bleep": -12,
+    "deess": 20
+   },
+   "router": {
+    "Microphone": {
+     "Headphones": true,
+     "BroadcastMix": true,
+     "ChatMic": true,
+     "Sampler": true,
+     "LineOut": true,
+     "StreamMix2": true
+    },
+    "Chat": {
+     "Headphones": true,
+     "BroadcastMix": true,
+     "ChatMic": false,
+     "Sampler": true,
+     "LineOut": true,
+     "StreamMix2": true
+    },
+    "Music": {
+     "Headphones": true,
+     "BroadcastMix": true,
+     "ChatMic": true,
+     "Sampler": true,
+     "LineOut": true,
+     "StreamMix2": true
+    },
+    "Game": {
+     "Headphones": true,
+     "BroadcastMix": true,
+     "ChatMic": true,
+     "Sampler": true,
+     "LineOut": true,
+     "StreamMix2": true
+    },
+    "Console": {
+     "Headphones": true,
+     "BroadcastMix": true,
+     "ChatMic": true,
+     "Sampler": true,
+     "LineOut": true,
+     "StreamMix2": true
+    },
+    "LineIn": {
+     "Headphones": true,
+     "BroadcastMix": true,
+     "ChatMic": true,
+     "Sampler": true,
+     "LineOut": true,
+     "StreamMix2": false
+    },
+    "System": {
+     "Headphones": true,
+     "BroadcastMix": true,
+     "ChatMic": true,
+     "Sampler": true,
+     "LineOut": true,
+     "StreamMix2": true
+    },
+    "Samples": {
+     "Headphones": true,
+     "BroadcastMix": true,
+     "ChatMic": true,
+     "Sampler": true,
+     "LineOut": true,
+     "StreamMix2": true
+    }
+   },
+   "cough_button": {
+    "is_toggle": false,
+    "mute_type": "All",
+    "state": "Unmuted"
+   },
+   "lighting": {
+    "animation": {
+     "supported": true,
+     "mode": "Simple",
+     "mod1": 10,
+     "mod2": 20,
+     "waterfall_direction": "Off"
+    },
+    "faders": {
+     "A": {
+      "style": "Gradient",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF"
+      }
+     },
+     "B": {
+      "style": "Gradient",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF"
+      }
+     },
+     "C": {
+      "style": "Gradient",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF"
+      }
+     },
+     "D": {
+      "style": "Gradient",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF"
+      }
+     }
+    },
+    "buttons": {
+     "Fader1Mute": {
+      "off_style": "Dimmed",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF"
+      }
+     },
+     "Fader2Mute": {
+      "off_style": "Dimmed",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF"
+      }
+     },
+     "Fader3Mute": {
+      "off_style": "Dimmed",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF"
+      }
+     },
+     "Fader4Mute": {
+      "off_style": "Dimmed",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF"
+      }
+     },
+     "Bleep": {
+      "off_style": "Dimmed",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF"
+      }
+     },
+     "Cough": {
+      "off_style": "Dimmed",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF"
+      }
+     },
+     "EffectSelect1": {
+      "off_style": "Dimmed",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF"
+      }
+     },
+     "EffectSelect2": {
+      "off_style": "Dimmed",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF"
+      }
+     },
+     "EffectSelect3": {
+      "off_style": "Dimmed",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF"
+      }
+     },
+     "EffectSelect4": {
+      "off_style": "Dimmed",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF"
+      }
+     },
+     "EffectSelect5": {
+      "off_style": "Dimmed",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF"
+      }
+     },
+     "EffectSelect6": {
+      "off_style": "Dimmed",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF"
+      }
+     },
+     "EffectFx": {
+      "off_style": "Dimmed",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF"
+      }
+     },
+     "EffectMegaphone": {
+      "off_style": "Dimmed",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF"
+      }
+     },
+     "EffectRobot": {
+      "off_style": "Dimmed",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF"
+      }
+     },
+     "EffectHardTune": {
+      "off_style": "Dimmed",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF"
+      }
+     },
+     "SamplerSelectA": {
+      "off_style": "Dimmed",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF"
+      }
+     },
+     "SamplerSelectB": {
+      "off_style": "Dimmed",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF"
+      }
+     },
+     "SamplerSelectC": {
+      "off_style": "Dimmed",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF"
+      }
+     },
+     "SamplerTopLeft": {
+      "off_style": "Dimmed",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF"
+      }
+     },
+     "SamplerTopRight": {
+      "off_style": "Dimmed",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF"
+      }
+     },
+     "SamplerBottomLeft": {
+      "off_style": "Dimmed",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF"
+      }
+     },
+     "SamplerBottomRight": {
+      "off_style": "Dimmed",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF"
+      }
+     },
+     "SamplerClear": {
+      "off_style": "Dimmed",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF"
+      }
+     }
+    },
+    "simple": {
+     "Global": {
+      "colour_one": "2FD0B5"
+     },
+     "Accent": {
+      "colour_one": "2FD0B5"
+     },
+     "Scribble1": {
+      "colour_one": "2FD0B5"
+     },
+     "Scribble2": {
+      "colour_one": "2FD0B5"
+     },
+     "Scribble3": {
+      "colour_one": "2FD0B5"
+     },
+     "Scribble4": {
+      "colour_one": "2FD0B5"
+     }
+    },
+    "sampler": {
+     "SamplerSelectA": {
+      "off_style": "Dimmed",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF",
+       "colour_three": "FFFF00"
+      }
+     },
+     "SamplerSelectB": {
+      "off_style": "Dimmed",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF",
+       "colour_three": "FFFF00"
+      }
+     },
+     "SamplerSelectC": {
+      "off_style": "Dimmed",
+      "colours": {
+       "colour_one": "00FFFF",
+       "colour_two": "FF00FF",
+       "colour_three": "FFFF00"
+      }
+     }
+    },
+    "encoders": {
+     "Reverb": {
+      "colour_one": "00FFFF",
+      "colour_two": "FF00FF",
+      "colour_three": "FFFF00"
+     },
+     "Pitch": {
+      "colour_one": "00FFFF",
+      "colour_two": "FF00FF",
+      "colour_three": "FFFF00"
+     },
+     "Echo": {
+      "colour_one": "00FFFF",
+      "colour_two": "FF00FF",
+      "colour_three": "FFFF00"
+     },
+     "Gender": {
+      "colour_one": "00FFFF",
+      "colour_two": "FF00FF",
+      "colour_three": "FFFF00"
+     }
+    }
+   },
+   "effects": {
+    "is_enabled": true,
+    "active_preset": "Preset1",
+    "preset_names": {
+     "Preset1": "Clean",
+     "Preset2": "Radio"
+    },
+    "current": {
+     "reverb": {
+      "style": "Library",
+      "amount": 10,
+      "feedback": 5,
+      "tempo": 100,
+      "decay": 500,
+      "early_level": -5,
+      "tail_level": -5,
+      "pre_delay": 3,
+      "lo_colour": 0,
+      "hi_colour": 0,
+      "hi_factor": 0,
+      "diffuse": 0,
+      "mod_speed": 0,
+      "mod_depth": 0,
+      "delay_left": 100,
+      "delay_right": 100,
+      "feedback_left": 10,
+      "feedback_right": 10,
+      "feedback_xfb_l_to_r": 10,
+      "feedback_xfb_r_to_l": 10,
+      "character": 10,
+      "is_enabled": true,
+      "post_gain": 0,
+      "low_gain": 0,
+      "low_freq": 10,
+      "low_width": 10,
+      "mid_gain": 0,
+      "mid_freq": 10,
+      "mid_width": 10,
+      "high_gain": 0,
+      "high_freq": 10,
+      "high_width": 10,
+      "waveform": 0,
+      "pulse_width": 50,
+      "threshold": -3,
+      "dry_mix": -3,
+      "rate": 10,
+      "window": 100,
+      "source": "All",
+      "raw_encoder": 0
+     },
+     "echo": {
+      "style": "Quarter",
+      "amount": 10,
+      "feedback": 5,
+      "tempo": 100,
+      "decay": 500,
+      "early_level": -5,
+      "tail_level": -5,
+      "pre_delay": 3,
+      "lo_colour": 0,
+      "hi_colour": 0,
+      "hi_factor": 0,
+      "diffuse": 0,
+      "mod_speed": 0,
+      "mod_depth": 0,
+      "delay_left": 100,
+      "delay_right": 100,
+      "feedback_left": 10,
+      "feedback_right": 10,
+      "feedback_xfb_l_to_r": 10,
+      "feedback_xfb_r_to_l": 10,
+      "character": 10,
+      "is_enabled": true,
+      "post_gain": 0,
+      "low_gain": 0,
+      "low_freq": 10,
+      "low_width": 10,
+      "mid_gain": 0,
+      "mid_freq": 10,
+      "mid_width": 10,
+      "high_gain": 0,
+      "high_freq": 10,
+      "high_width": 10,
+      "waveform": 0,
+      "pulse_width": 50,
+      "threshold": -3,
+      "dry_mix": -3,
+      "rate": 10,
+      "window": 100,
+      "source": "All",
+      "raw_encoder": 0
+     },
+     "pitch": {
+      "style": "Narrow",
+      "amount": 10,
+      "feedback": 5,
+      "tempo": 100,
+      "decay": 500,
+      "early_level": -5,
+      "tail_level": -5,
+      "pre_delay": 3,
+      "lo_colour": 0,
+      "hi_colour": 0,
+      "hi_factor": 0,
+      "diffuse": 0,
+      "mod_speed": 0,
+      "mod_depth": 0,
+      "delay_left": 100,
+      "delay_right": 100,
+      "feedback_left": 10,
+      "feedback_right": 10,
+      "feedback_xfb_l_to_r": 10,
+      "feedback_xfb_r_to_l": 10,
+      "character": 10,
+      "is_enabled": true,
+      "post_gain": 0,
+      "low_gain": 0,
+      "low_freq": 10,
+      "low_width": 10,
+      "mid_gain": 0,
+      "mid_freq": 10,
+      "mid_width": 10,
+      "high_gain": 0,
+      "high_freq": 10,
+      "high_width": 10,
+      "waveform": 0,
+      "pulse_width": 50,
+      "threshold": -3,
+      "dry_mix": -3,
+      "rate": 10,
+      "window": 100,
+      "source": "All",
+      "raw_encoder": 0
+     },
+     "gender": {
+      "style": "Narrow",
+      "amount": 10,
+      "feedback": 5,
+      "tempo": 100,
+      "decay": 500,
+      "early_level": -5,
+      "tail_level": -5,
+      "pre_delay": 3,
+      "lo_colour": 0,
+      "hi_colour": 0,
+      "hi_factor": 0,
+      "diffuse": 0,
+      "mod_speed": 0,
+      "mod_depth": 0,
+      "delay_left": 100,
+      "delay_right": 100,
+      "feedback_left": 10,
+      "feedback_right": 10,
+      "feedback_xfb_l_to_r": 10,
+      "feedback_xfb_r_to_l": 10,
+      "character": 10,
+      "is_enabled": true,
+      "post_gain": 0,
+      "low_gain": 0,
+      "low_freq": 10,
+      "low_width": 10,
+      "mid_gain": 0,
+      "mid_freq": 10,
+      "mid_width": 10,
+      "high_gain": 0,
+      "high_freq": 10,
+      "high_width": 10,
+      "waveform": 0,
+      "pulse_width": 50,
+      "threshold": -3,
+      "dry_mix": -3,
+      "rate": 10,
+      "window": 100,
+      "source": "All",
+      "raw_encoder": 0
+     },
+     "megaphone": {
+      "style": "Megaphone",
+      "amount": 10,
+      "feedback": 5,
+      "tempo": 100,
+      "decay": 500,
+      "early_level": -5,
+      "tail_level": -5,
+      "pre_delay": 3,
+      "lo_colour": 0,
+      "hi_colour": 0,
+      "hi_factor": 0,
+      "diffuse": 0,
+      "mod_speed": 0,
+      "mod_depth": 0,
+      "delay_left": 100,
+      "delay_right": 100,
+      "feedback_left": 10,
+      "feedback_right": 10,
+      "feedback_xfb_l_to_r": 10,
+      "feedback_xfb_r_to_l": 10,
+      "character": 10,
+      "is_enabled": true,
+      "post_gain": 0,
+      "low_gain": 0,
+      "low_freq": 10,
+      "low_width": 10,
+      "mid_gain": 0,
+      "mid_freq": 10,
+      "mid_width": 10,
+      "high_gain": 0,
+      "high_freq": 10,
+      "high_width": 10,
+      "waveform": 0,
+      "pulse_width": 50,
+      "threshold": -3,
+      "dry_mix": -3,
+      "rate": 10,
+      "window": 100,
+      "source": "All",
+      "raw_encoder": 0
+     },
+     "robot": {
+      "style": "Robot1",
+      "amount": 10,
+      "feedback": 5,
+      "tempo": 100,
+      "decay": 500,
+      "early_level": -5,
+      "tail_level": -5,
+      "pre_delay": 3,
+      "lo_colour": 0,
+      "hi_colour": 0,
+      "hi_factor": 0,
+      "diffuse": 0,
+      "mod_speed": 0,
+      "mod_depth": 0,
+      "delay_left": 100,
+      "delay_right": 100,
+      "feedback_left": 10,
+      "feedback_right": 10,
+      "feedback_xfb_l_to_r": 10,
+      "feedback_xfb_r_to_l": 10,
+      "character": 10,
+      "is_enabled": true,
+      "post_gain": 0,
+      "low_gain": 0,
+      "low_freq": 10,
+      "low_width": 10,
+      "mid_gain": 0,
+      "mid_freq": 10,
+      "mid_width": 10,
+      "high_gain": 0,
+      "high_freq": 10,
+      "high_width": 10,
+      "waveform": 0,
+      "pulse_width": 50,
+      "threshold": -3,
+      "dry_mix": -3,
+      "rate": 10,
+      "window": 100,
+      "source": "All",
+      "raw_encoder": 0
+     },
+     "hard_tune": {
+      "style": "Natural",
+      "amount": 10,
+      "feedback": 5,
+      "tempo": 100,
+      "decay": 500,
+      "early_level": -5,
+      "tail_level": -5,
+      "pre_delay": 3,
+      "lo_colour": 0,
+      "hi_colour": 0,
+      "hi_factor": 0,
+      "diffuse": 0,
+      "mod_speed": 0,
+      "mod_depth": 0,
+      "delay_left": 100,
+      "delay_right": 100,
+      "feedback_left": 10,
+      "feedback_right": 10,
+      "feedback_xfb_l_to_r": 10,
+      "feedback_xfb_r_to_l": 10,
+      "character": 10,
+      "is_enabled": true,
+      "post_gain": 0,
+      "low_gain": 0,
+      "low_freq": 10,
+      "low_width": 10,
+      "mid_gain": 0,
+      "mid_freq": 10,
+      "mid_width": 10,
+      "high_gain": 0,
+      "high_freq": 10,
+      "high_width": 10,
+      "waveform": 0,
+      "pulse_width": 50,
+      "threshold": -3,
+      "dry_mix": -3,
+      "rate": 10,
+      "window": 100,
+      "source": "All",
+      "raw_encoder": 0
+     }
+    }
+   },
+   "sampler": {
+    "processing_state": {
+     "progress": null,
+     "last_error": null
+    },
+    "active_bank": "A",
+    "clear_active": false,
+    "record_buffer": 5000,
+    "banks": {
+     "A": {
+      "TopLeft": {
+       "function": "PlayNext",
+       "order": "Sequential",
+       "samples": [
+        {
+         "name": "airhorn.wav",
+         "start_pct": 0.0,
+         "stop_pct": 100.0
+        },
+        {
+         "name": "applause.wav",
+         "start_pct": 5.0,
+         "stop_pct": 90.0
+        }
+       ],
+       "is_playing": false,
+       "is_recording": false
+      },
+      "TopRight": {
+       "function": "PlayNext",
+       "order": "Sequential",
+       "samples": [
+        {
+         "name": "airhorn.wav",
+         "start_pct": 0.0,
+         "stop_pct": 100.0
+        },
+        {
+         "name": "applause.wav",
+         "start_pct": 5.0,
+         "stop_pct": 90.0
+        }
+       ],
+       "is_playing": false,
+       "is_recording": false
+      },
+      "BottomLeft": {
+       "function": "PlayNext",
+       "order": "Sequential",
+       "samples": [
+        {
+         "name": "airhorn.wav",
+         "start_pct": 0.0,
+         "stop_pct": 100.0
+        },
+        {
+         "name": "applause.wav",
+         "start_pct": 5.0,
+         "stop_pct": 90.0
+        }
+       ],
+       "is_playing": false,
+       "is_recording": false
+      },
+      "BottomRight": {
+       "function": "PlayNext",
+       "order": "Sequential",
+       "samples": [
+        {
+         "name": "airhorn.wav",
+         "start_pct": 0.0,
+         "stop_pct": 100.0
+        },
+        {
+         "name": "applause.wav",
+         "start_pct": 5.0,
+         "stop_pct": 90.0
+        }
+       ],
+       "is_playing": false,
+       "is_recording": false
+      }
+     },
+     "B": {
+      "TopLeft": {
+       "function": "PlayNext",
+       "order": "Sequential",
+       "samples": [
+        {
+         "name": "airhorn.wav",
+         "start_pct": 0.0,
+         "stop_pct": 100.0
+        },
+        {
+         "name": "applause.wav",
+         "start_pct": 5.0,
+         "stop_pct": 90.0
+        }
+       ],
+       "is_playing": false,
+       "is_recording": false
+      },
+      "TopRight": {
+       "function": "PlayNext",
+       "order": "Sequential",
+       "samples": [
+        {
+         "name": "airhorn.wav",
+         "start_pct": 0.0,
+         "stop_pct": 100.0
+        },
+        {
+         "name": "applause.wav",
+         "start_pct": 5.0,
+         "stop_pct": 90.0
+        }
+       ],
+       "is_playing": false,
+       "is_recording": false
+      },
+      "BottomLeft": {
+       "function": "PlayNext",
+       "order": "Sequential",
+       "samples": [
+        {
+         "name": "airhorn.wav",
+         "start_pct": 0.0,
+         "stop_pct": 100.0
+        },
+        {
+         "name": "applause.wav",
+         "start_pct": 5.0,
+         "stop_pct": 90.0
+        }
+       ],
+       "is_playing": false,
+       "is_recording": false
+      },
+      "BottomRight": {
+       "function": "PlayNext",
+       "order": "Sequential",
+       "samples": [
+        {
+         "name": "airhorn.wav",
+         "start_pct": 0.0,
+         "stop_pct": 100.0
+        },
+        {
+         "name": "applause.wav",
+         "start_pct": 5.0,
+         "stop_pct": 90.0
+        }
+       ],
+       "is_playing": false,
+       "is_recording": false
+      }
+     },
+     "C": {
+      "TopLeft": {
+       "function": "PlayNext",
+       "order": "Sequential",
+       "samples": [
+        {
+         "name": "airhorn.wav",
+         "start_pct": 0.0,
+         "stop_pct": 100.0
+        },
+        {
+         "name": "applause.wav",
+         "start_pct": 5.0,
+         "stop_pct": 90.0
+        }
+       ],
+       "is_playing": false,
+       "is_recording": false
+      },
+      "TopRight": {
+       "function": "PlayNext",
+       "order": "Sequential",
+       "samples": [
+        {
+         "name": "airhorn.wav",
+         "start_pct": 0.0,
+         "stop_pct": 100.0
+        },
+        {
+         "name": "applause.wav",
+         "start_pct": 5.0,
+         "stop_pct": 90.0
+        }
+       ],
+       "is_playing": false,
+       "is_recording": false
+      },
+      "BottomLeft": {
+       "function": "PlayNext",
+       "order": "Sequential",
+       "samples": [
+        {
+         "name": "airhorn.wav",
+         "start_pct": 0.0,
+         "stop_pct": 100.0
+        },
+        {
+         "name": "applause.wav",
+         "start_pct": 5.0,
+         "stop_pct": 90.0
+        }
+       ],
+       "is_playing": false,
+       "is_recording": false
+      },
+      "BottomRight": {
+       "function": "PlayNext",
+       "order": "Sequential",
+       "samples": [
+        {
+         "name": "airhorn.wav",
+         "start_pct": 0.0,
+         "stop_pct": 100.0
+        },
+        {
+         "name": "applause.wav",
+         "start_pct": 5.0,
+         "stop_pct": 90.0
+        }
+       ],
+       "is_playing": false,
+       "is_recording": false
+      }
+     }
+    }
+   },
+   "settings": {
+    "display": {
+     "gate": "Simple",
+     "compressor": "Simple",
+     "equaliser": "Simple",
+     "equaliser_fine": "Simple"
+    },
+    "mute_hold_duration": 500,
+    "vc_mute_also_mute_cm": true,
+    "enable_monitor_with_fx": false,
+    "reset_sampler_on_clear": false,
+    "lock_faders": false,
+    "fade_duration": 100,
+    "vod_mode": "Routable"
+   },
+   "button_down": {
+    "Fader1Mute": false,
+    "Fader2Mute": false,
+    "Fader3Mute": false,
+    "Fader4Mute": false,
+    "Bleep": false,
+    "Cough": false,
+    "EffectSelect1": false,
+    "EffectSelect2": false,
+    "EffectSelect3": false,
+    "EffectSelect4": false,
+    "EffectSelect5": false,
+    "EffectSelect6": false,
+    "EffectFx": false,
+    "EffectMegaphone": false,
+    "EffectRobot": false,
+    "EffectHardTune": false,
+    "SamplerSelectA": false,
+    "SamplerSelectB": false,
+    "SamplerSelectC": false,
+    "SamplerTopLeft": false,
+    "SamplerTopRight": false,
+    "SamplerBottomLeft": false,
+    "SamplerBottomRight": false,
+    "SamplerClear": false
+   },
+   "profile_name": "Streaming",
+   "mic_profile_name": "Podcast"
+  }
+ },
+ "paths": {
+  "profile_directory": "/tmp",
+  "mic_profile_directory": "/tmp",
+  "samples_directory": "/tmp",
+  "presets_directory": "/tmp",
+  "icons_directory": "/tmp",
+  "logs_directory": "/tmp"
+ },
+ "files": {
+  "profiles": [
+   "Default",
+   "Streaming",
+   "Gaming"
+  ],
+  "mic_profiles": [
+   "Default",
+   "Podcast"
+  ],
+  "presets": [
+   "Radio",
+   "Cave"
+  ],
+  "samples": {
+   "airhorn.wav": {
+    "name": "airhorn.wav",
+    "gain_pct": 100
+   },
+   "applause.wav": {
+    "name": "applause.wav",
+    "gain_pct": 80
+   }
+  },
+  "icons": [
+   "mic.png",
+   "game.png"
+  ]
+ }
+}
