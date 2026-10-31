@@ -8,6 +8,7 @@ jobs:
   build_windows:
     name: "Create Windows Build"
     strategy:
+      fail-fast: false
       matrix:
         include:
           - targets: x86_64-pc-windows-msvc
@@ -194,7 +195,7 @@ jobs:
         run: |
           wget http://s.sudre.free.fr/Software/files/Packages.dmg
           hdiutil attach Packages.dmg
-          sudo installer -pkg /Volumes/Packages\ 1.2.10/Install\ Packages.pkg -target /
+          sudo installer -pkg /Volumes/Packages*/Install\ Packages.pkg -target /
       - name: "Build LIPO Binaries"
         run: ./ci/build-macos-package '${{ needs.get_version.outputs.version }}'
         shell: bash
