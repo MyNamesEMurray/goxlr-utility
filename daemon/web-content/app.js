@@ -108,19 +108,23 @@ const btn = (text, onclick, cls = '') => h('button', { class: 'b ' + cls, onclic
 const row = (label, ...ctl) => h('div', { class: 'row' }, label ? h('label', {}, label) : null, ...ctl);
 const card = (title, ...kids) => h('div', { class: 'card' }, h('h3', {}, title), ...kids);
 
+const fill = (el) => {
+  const span = el.max - el.min, p = ((el.value - el.min) / span) * 100, c = +el.min < 0 && +el.max > 0 ? (-el.min / span) * 100 : 0;
+  el.style.setProperty('--a', Math.min(c, p) + '%');
+  el.style.setProperty('--b', Math.max(c, p) + '%');
+};
+function rangeInput(props, get, set, onVal) {
+  const input = h('input', { type: 'range', ...props });
+  const send1 = throttle(set);
+  input.addEventListener('input', () => { fill(input); onVal?.(+input.value); send1(+input.value); });
+  return bind(input, get, (el, v) => { if (!el.matches(':active')) { el.value = v; fill(el); onVal?.(+v); } });
+}
 function slider(label, { min, max, step = 1, get, set, fmt = (v) => v }) {
   const val = h('span', { class: 'val' });
-  const input = h('input', { type: 'range', min, max, step });
-  const send1 = throttle(set);
-  input.addEventListener('input', () => { val.textContent = fmt(+input.value); send1(+input.value); });
-  bind(input, get, (el, v) => { if (!el.matches(':active')) { el.value = v; val.textContent = fmt(+v); } });
-  return row(label, input, val);
+  return row(label, rangeInput({ min, max, step }, get, set, (v) => (val.textContent = fmt(v))), val);
 }
 function sliderV(get, set, { min, max, step = 1 }) {
-  const input = h('input', { type: 'range', min, max, step, orient: 'vertical' });
-  const send1 = throttle(set);
-  input.addEventListener('input', () => send1(+input.value));
-  return bind(input, get, (el, v) => { if (!el.matches(':active')) el.value = v; });
+  return rangeInput({ min, max, step, class: 'v' }, get, set);
 }
 function seg(label, options, get, set, { cls = '' } = {}) {
   const wrap = h('div', { class: 'seg' });
@@ -129,7 +133,8 @@ function seg(label, options, get, set, { cls = '' } = {}) {
   return label ? row(label, wrap) : wrap;
 }
 function sel(label, options, get, set) {
-  const s = h('select', {}, options.map((o) => { const [v, t] = Array.isArray(o) ? o : [o, o]; return h('option', { value: v }, t); }));
+  const opts = options.map((o) => (Array.isArray(o) ? o : [o, o]));
+  const s = h('select', {}, !opts.some(([v]) => v === '') ? h('option', { value: '', disabled: true, hidden: true }, 'Select...') : null, opts.map(([v, t]) => h('option', { value: v }, t)));
   s.addEventListener('change', () => set(s.value));
   bind(s, get, (el, v) => { if (document.activeElement !== el) el.value = v ?? ''; });
   return label ? row(label, s) : s;
@@ -170,6 +175,7 @@ const CHANNELS = ['Mic', 'LineIn', 'Console', 'System', 'Game', 'Chat', 'Sample'
 const CH_LABEL = { LineIn: 'Line In', MicMonitor: 'Mic Monitor', LineOut: 'Line Out', Sample: 'Samples' };
 const label = (s) => CH_LABEL[s] || s.replace(/([a-z])([A-Z0-9])/g, '$1 $2');
 const lopts = (arr) => arr.map((v) => [v, label(v)]);
+const SHORT = { Headphones: 'Phones', BroadcastMix: 'Bcast', ChatMic: 'Chat', LineOut: 'Line', StreamMix2: 'Strm 2' };
 const FADERS = ['A', 'B', 'C', 'D'];
 const MUTE_FN = ['All', 'ToStream', 'ToVoiceChat', 'ToPhones', 'ToLineOut', 'ToStream2', 'ToStreams'];
 const pct = (v) => Math.round((v / 255) * 100) + '%';
@@ -182,7 +188,7 @@ const views = {
     for (const ch of CHANNELS) {
       const faderOf = () => FADERS.find((f) => mixer().fader_status[f].channel === ch);
       const volume = h('div', { class: 'val' });
-      const tag = bind(h('div', { class: 'tag' }), () => 0, (el) => (el.textContent = faderOf() ? 'Fader ' + faderOf() : ''));
+      const tag = bind(h('div', { class: 'tag' }), () => 0, (el) => { el.textContent = faderOf() ? 'Fader ' + faderOf() : 'No fader'; el.classList.toggle('none', !faderOf()); });
       const slide = sliderV((m) => m.levels.volumes[ch], (v) => cmd('SetVolume', ch, v), { min: 0, max: 255 });
       slide.addEventListener('input', () => (volume.textContent = pct(+slide.value)));
       bind(volume, (m) => m.levels.volumes[ch], (el, v) => (el.textContent = pct(v)));
@@ -192,7 +198,7 @@ const views = {
         const cur = mixer().fader_status[f].mute_state;
         cmd('SetFaderMuteState', f, cur === 'Unmuted' ? (e.shiftKey ? 'MutedToAll' : 'MutedToX') : 'Unmuted');
       }, 'red');
-      bind(mute, () => 0, (el) => { const f = faderOf(); el.style.visibility = f ? '' : 'hidden'; el.classList.toggle('on', !!f && mixer().fader_status[f].mute_state !== 'Unmuted'); });
+      bind(mute, () => 0, (el) => { const f = faderOf(); el.disabled = !f; el.title = f ? '' : 'Not assigned to a fader'; el.classList.toggle('on', !!f && mixer().fader_status[f].mute_state !== 'Unmuted'); });
       const s = h('div', { class: 'strip' }, h('div', { class: 'name' }, label(ch)), tag, slide, volume, mute);
       bind(s, () => 0, (el) => el.classList.toggle('fader', !!faderOf()));
       strips.append(s);
@@ -203,12 +209,12 @@ const views = {
         row('Level', h('div', { class: 'vu' }, meter)),
         toggle('Cough', (m) => m.cough_button.state !== 'Unmuted', () => cmd('SetCoughMuteState', mixer().cough_button.state === 'Unmuted' ? 'MutedToX' : 'Unmuted'), 'red'),
         slider('Bleep volume', { min: -34, max: 0, get: (m) => m.levels.bleep, set: (v) => cmd('SetSwearButtonVolume', v), fmt: (v) => v + ' dB' })),
-      card('Faders', ...FADERS.map((f) => h('div', { class: 'row' },
-        h('label', { style: 'flex-basis:56px' }, f),
+      card('Faders', ...FADERS.map((f) => h('div', { class: 'row pair' },
+        h('label', { style: 'min-width:0' }, f),
         sel(null, lopts(CHANNELS.slice(0, 8)), (m) => m.fader_status[f].channel, (v) => cmd('SetFader', f, v)),
         sel(null, MUTE_FN.map((v) => [v, label(v)]), (m) => m.fader_status[f].mute_type, (v) => cmd('SetFaderMuteFunction', f, v)))),
         toggle('Lock faders', (m) => m.settings.lock_faders, (v) => cmd('SetLockFaders', v))),
-      h('div', { class: 'card', style: 'grid-column:1/-1' }, h('h3', {}, 'Scribbles'), ...FADERS.map((f) => h('div', { class: 'row' },
+      h('div', { class: 'card', style: 'grid-column:1/-1' }, h('h3', {}, 'Scribbles'), ...FADERS.map((f) => h('div', { class: 'row scr' }, h('label', { style: 'min-width:0' }, f),
         h('img', { src: `/files/scribble/${S.serial}/${f}.png?${Date.now() % 1e6}`, width: 64, style: 'image-rendering:pixelated;background:#000', onerror: (e) => (e.target.style.display = 'none') }),
         dyn((st) => st.files.icons, (icons) => sel(null, [['', '(no icon)'], ...icons.map((i) => [i, i])], (m) => m.fader_status[f].scribble?.file_name ?? '', (v) => cmd('SetScribbleIcon', f, v || null))),
         txtInput('Top', (m) => m.fader_status[f].scribble?.left_text ?? '', (v) => cmd('SetScribbleNumber', f, v)),
@@ -222,12 +228,12 @@ const views = {
     const m = mixer();
     const inputs = Object.keys(m.router);
     const outputs = Object.keys(m.router[inputs[0]]);
-    const tbl = h('table', { class: 'matrix' }, h('tr', {}, h('th'), ...outputs.map((o) => h('th', {}, label(o)))),
+    const tbl = h('div', { class: 'matrix-wrap' }, h('table', { class: 'matrix' }, h('tr', {}, h('th'), ...outputs.map((o) => h('th', { title: label(o) }, h('span', { class: 'f' }, label(o)), h('span', { class: 's' }, SHORT[o] || label(o))))),
       ...inputs.map((i) => h('tr', {}, h('th', {}, label(i)), ...outputs.map((o) => {
-        const b = h('button', { title: `${label(i)} to ${label(o)}`, disabled: i === 'Chat' && o === 'ChatMic', onclick: () => cmd('SetRouter', i, o, !b.classList.contains('on')) });
+        const b = h('button', { title: i === 'Chat' && o === 'ChatMic' ? 'Not routable' : `${label(i)} to ${label(o)}`, 'aria-label': `${label(i)} to ${label(o)}`, disabled: i === 'Chat' && o === 'ChatMic', 'aria-disabled': i === 'Chat' && o === 'ChatMic' ? 'true' : null, onclick: () => cmd('SetRouter', i, o, !b.classList.contains('on')) });
         bind(b, (m) => m.router[i][o], (el, v) => el.classList.toggle('on', !!v));
         return h('td', {}, b);
-      }))));
+      })))));
     const cards = [card('Routing matrix', tbl),
       card('Monitor', sel('Monitor mix', lopts(outputs), (m) => m.levels.output_monitor, (v) => cmd('SetMonitorMix', v)),
         toggle('Monitor with FX', (m) => m.settings.enable_monitor_with_fx, (v) => cmd('SetMonitorWithFx', v)))];
@@ -235,14 +241,13 @@ const views = {
       const subs = ['Mic', 'LineIn', 'Console', 'System', 'Game', 'Chat', 'Sample', 'Music'];
       cards.push(card('Sub mix', toggle('Enable sub mix', (m) => !!m.levels.submix, (v) => cmd('SetSubMixEnabled', v)),
         dyn((st, m) => !!m.levels.submix, (on) => on ? [
-          ...subs.map((c) => h('div', { class: 'row' }, h('label', {}, label(c)),
-            (() => { const i = h('input', { type: 'range', min: 0, max: 255 }); const s1 = throttle((v) => cmd('SetSubMixVolume', c, v)); i.addEventListener('input', () => s1(+i.value)); return bind(i, (m) => m.levels.submix.inputs[c].volume, (el, v) => { if (!el.matches(':active')) el.value = v; }); })(),
-            toggle('Link', (m) => m.levels.submix.inputs[c].linked, (v) => cmd('SetSubMixLinked', c, v)))),
-          h('h3', { style: 'margin-top:16px' }, 'Output mix'),
-          ...outputs.map((o) => seg(label(o), ['A', 'B'], (m) => m.levels.submix.outputs[o], (v) => cmd('SetSubMixOutputMix', o, v))),
-        ] : h('p', { class: 'muted' }, 'Disabled.'))));
+          ...subs.map((c) => { const val = h('span', { class: 'val' }); return h('div', { class: 'row nw' }, h('label', {}, label(c)),
+            rangeInput({ min: 0, max: 255 }, (m) => m.levels.submix.inputs[c].volume, (v) => cmd('SetSubMixVolume', c, v), (v) => (val.textContent = pct(v))), val,
+            toggle('Link', (m) => m.levels.submix.inputs[c].linked, (v) => cmd('SetSubMixLinked', c, v))); }),
+        ] : h('p', { class: 'muted' }, 'Disabled.'))),
+        card('Output mix', h('p', { class: 'hint' }, 'Choose which sub mix feeds each output.'), dyn((st, m) => !!m.levels.submix, (on) => on ? outputs.map((o) => seg(label(o), ['A', 'B'], (m) => m.levels.submix.outputs[o], (v) => cmd('SetSubMixOutputMix', o, v))) : h('p', { class: 'muted' }, 'Enable sub mix first.'))));
     }
-    return h('div', { class: 'grid first-wide' }, ...cards);
+    return h('div', {}, cards[0], h('div', { class: 'masonry', style: 'margin-top:16px' }, ...cards.slice(1)));
   },
 
   mic() {
@@ -258,10 +263,10 @@ const views = {
       ? { prop: 'equaliser_mini', names: ['Equalizer90Hz', 'Equalizer250Hz', 'Equalizer500Hz', 'Equalizer1KHz', 'Equalizer3KHz', 'Equalizer8KHz'] }
       : { prop: 'equaliser', names: ['Equalizer31Hz', 'Equalizer63Hz', 'Equalizer125Hz', 'Equalizer250Hz', 'Equalizer500Hz', 'Equalizer1KHz', 'Equalizer2KHz', 'Equalizer4KHz', 'Equalizer8KHz', 'Equalizer16KHz'] };
     const eq = h('div', { class: 'eq' }, bands.names.map((n) => h('div', { class: 'band' },
-      sliderV((m) => m.mic_status[bands.prop].gain[n], (v) => cmd(isMini() ? 'SetEqMiniGain' : 'SetEqGain', n, v), { min: -9, max: 9 }),
+      (() => { const g = h('span', { class: 'gv' }); return [g, rangeInput({ min: -9, max: 9, class: 'v' }, (m) => m.mic_status[bands.prop].gain[n], (v) => cmd(isMini() ? 'SetEqMiniGain' : 'SetEqGain', n, v), (v) => (g.textContent = (v > 0 ? '+' : '') + v))]; })(),
       numInput((m) => Math.round(m.mic_status[bands.prop].frequency[n]), (v) => cmd(isMini() ? 'SetEqMiniFreq' : 'SetEqFreq', n, v), { step: 1 }),
-      h('span', {}, n.replace('Equalizer', '')))));
-    return h('div', { class: 'grid' },
+      h('span', {}, n.replace('Equalizer', '').replace('KHz', 'kHz')))));
+    return h('div', {}, h('div', { class: 'masonry' },
       card('Input', seg('Type', types, (m) => m.mic_status.mic_type, (v) => cmd('SetMicrophoneType', v)),
         dyn((st, m) => m.mic_status.mic_type, (t) => slider('Gain', { min: 0, max: 72, get: gains(t), set: (v) => cmd('SetMicrophoneGain', t, v), fmt: (v) => v + ' dB' })),
         slider('De-esser', { min: 0, max: 100, get: (m) => m.levels.deess, set: (v) => cmd('SetDeeser', v), fmt: (v) => v + '%' })),
@@ -276,7 +281,7 @@ const views = {
         sel('Ratio', CRATIO.map(nice), (m) => m.mic_status.compressor.ratio, (v) => cmd('SetCompressorRatio', v)),
         sel('Attack', CATK.map(nice), (m) => m.mic_status.compressor.attack, (v) => cmd('SetCompressorAttack', v)),
         sel('Release', CREL.map(nice), (m) => m.mic_status.compressor.release, (v) => cmd('SetCompressorReleaseTime', v))),
-      h('div', { class: 'card', style: 'grid-column:1/-1' }, h('h3', {}, 'Equaliser (dB, centre frequency in Hz)'), eq));
+      ), h('div', { class: 'card', style: 'margin-top:16px' }, h('h3', {}, 'Equaliser'), h('p', { class: 'hint' }, 'Gain in dB (-9 to +9). Centre frequency in Hz underneath.'), eq));
   },
 
   effects() {
@@ -287,10 +292,10 @@ const views = {
     const S1 = (label_, path, c, min, max, unit = '', extra = []) => slider(label_, { min, max, get: E(path), set: (v) => cmd(c, ...extra, v), fmt: (v) => v + unit });
     const st = (path, c, opts) => sel('Style', opts.map((o) => [o, label(o)]), E(path), (v) => cmd(c, v));
     const presets = ['Preset1', 'Preset2', 'Preset3', 'Preset4', 'Preset5', 'Preset6'];
-    return h('div', { class: 'grid' },
+    return h('div', { class: 'cols' }, h('div', { class: 'col' },
       card('Presets', toggle('Effects on', (m) => m.effects.is_enabled, (v) => cmd('SetFXEnabled', v)),
         h('div', { class: 'row' }, seg(null, presets.map((p, i) => [p, String(i + 1)]), (m) => m.effects.active_preset, (v) => cmd('SetActiveEffectPreset', v))),
-        dyn((s, m) => [m.effects.active_preset, m.effects.preset_names], () => h('p', { class: 'muted' }, 'Active: ' + (mixer().effects.preset_names[mixer().effects.active_preset] || ''))),
+        dyn((s, m) => [m.effects.active_preset, m.effects.preset_names], () => h('p', { class: 'muted' }, 'Active preset: ' + (mixer().effects.preset_names[mixer().effects.active_preset] || ''))),
         h('div', { class: 'row' }, btn('Save', () => cmd('SaveActivePreset')), btn('Rename', prompter('New preset name', (n) => cmd('RenameActivePreset', n))),
           dyn((s) => s.files.presets, (p) => sel(null, [['', 'Load preset file...'], ...p.map((x) => [x, x])], () => '', (v) => v && cmd('LoadEffectPreset', v))))),
       fx('Reverb', null, st('reverb.style', 'SetReverbStyle', ['Library', 'DarkBloom', 'MusicClub', 'RealPlate', 'Chapel', 'HockeyArena']),
@@ -305,20 +310,21 @@ const views = {
         S1('Feedback L', 'echo.feedback_left', 'SetEchoFeedbackLeft', 0, 100, '%'), S1('Feedback R', 'echo.feedback_right', 'SetEchoFeedbackRight', 0, 100, '%'),
         S1('XFB L to R', 'echo.feedback_xfb_l_to_r', 'SetEchoFeedbackXFBLtoR', 0, 100, '%'), S1('XFB R to L', 'echo.feedback_xfb_r_to_l', 'SetEchoFeedbackXFBRtoL', 0, 100, '%')),
       fx('Pitch', null, st('pitch.style', 'SetPitchStyle', ['Narrow', 'Wide']), S1('Amount', 'pitch.amount', 'SetPitchAmount', -24, 24), S1('Character', 'pitch.character', 'SetPitchCharacter', 0, 100)),
-      fx('Gender', null, st('gender.style', 'SetGenderStyle', ['Narrow', 'Medium', 'Wide']), S1('Amount', 'gender.amount', 'SetGenderAmount', -12, 12)),
+      fx('Gender', null, st('gender.style', 'SetGenderStyle', ['Narrow', 'Medium', 'Wide']), S1('Amount', 'gender.amount', 'SetGenderAmount', -12, 12))),
+      h('div', { class: 'col' },
       fx('Megaphone', toggle('Enabled', (m) => m.effects.current.megaphone.is_enabled, (v) => cmd('SetMegaphoneEnabled', v)),
         st('megaphone.style', 'SetMegaphoneStyle', ['Megaphone', 'Radio', 'OnThePhone', 'Overdrive', 'BuzzCutt', 'Tweed']),
         S1('Amount', 'megaphone.amount', 'SetMegaphoneAmount', 0, 100, '%'), S1('Post gain', 'megaphone.post_gain', 'SetMegaphonePostGain', -20, 20, ' dB')),
-      fx('Robot', toggle('Enabled', (m) => m.effects.current.robot.is_enabled, (v) => cmd('SetRobotEnabled', v)),
-        st('robot.style', 'SetRobotStyle', ['Robot1', 'Robot2', 'Robot3']),
-        ...['Low', 'Medium', 'High'].flatMap((r) => { const k = { Low: 'low', Medium: 'mid', High: 'high' }[r]; return [
-          S1(r + ' gain', `robot.${k}_gain`, 'SetRobotGain', -12, 12, ' dB', [r]), S1(r + ' freq', `robot.${k}_freq`, 'SetRobotFreq', 0, 88, '', [r]), S1(r + ' width', `robot.${k}_width`, 'SetRobotWidth', 0, 88, '', [r])]; }),
-        S1('Waveform', 'robot.waveform', 'SetRobotWaveform', 0, 2), S1('Pulse width', 'robot.pulse_width', 'SetRobotPulseWidth', 0, 100),
-        S1('Threshold', 'robot.threshold', 'SetRobotThreshold', -36, 0, ' dB'), S1('Dry mix', 'robot.dry_mix', 'SetRobotDryMix', -36, 0, ' dB')),
       fx('Hard tune', toggle('Enabled', (m) => m.effects.current.hard_tune.is_enabled, (v) => cmd('SetHardTuneEnabled', v)),
         st('hard_tune.style', 'SetHardTuneStyle', ['Natural', 'Medium', 'Hard']),
         S1('Amount', 'hard_tune.amount', 'SetHardTuneAmount', 0, 100, '%'), S1('Rate', 'hard_tune.rate', 'SetHardTuneRate', 0, 100), S1('Window', 'hard_tune.window', 'SetHardTuneWindow', 0, 600, ' ms'),
-        sel('Source', ['All', 'Music', 'Game', 'LineIn', 'System'].map((o) => [o, label(o)]), E('hard_tune.source'), (v) => cmd('SetHardTuneSource', v))));
+        sel('Source', ['All', 'Music', 'Game', 'LineIn', 'System'].map((o) => [o, label(o)]), E('hard_tune.source'), (v) => cmd('SetHardTuneSource', v))),
+      fx('Robot', toggle('Enabled', (m) => m.effects.current.robot.is_enabled, (v) => cmd('SetRobotEnabled', v)),
+        st('robot.style', 'SetRobotStyle', ['Robot1', 'Robot2', 'Robot3']),
+        ...['Low', 'Medium', 'High'].flatMap((r) => { const k = { Low: 'low', Medium: 'mid', High: 'high' }[r]; return [
+          h('div', { class: 'sub' }, r + ' band'), S1(r + ' gain', `robot.${k}_gain`, 'SetRobotGain', -12, 12, ' dB', [r]), S1(r + ' freq', `robot.${k}_freq`, 'SetRobotFreq', 0, 88, '', [r]), S1(r + ' width', `robot.${k}_width`, 'SetRobotWidth', 0, 88, '', [r])]; }),
+        h('div', { class: 'sub' }, 'Voice'), S1('Waveform', 'robot.waveform', 'SetRobotWaveform', 0, 2), S1('Pulse width', 'robot.pulse_width', 'SetRobotPulseWidth', 0, 100),
+        S1('Threshold', 'robot.threshold', 'SetRobotThreshold', -36, 0, ' dB'), S1('Dry mix', 'robot.dry_mix', 'SetRobotDryMix', -36, 0, ' dB'))));
   },
 
   sampler() {
@@ -333,33 +339,34 @@ const views = {
         bind(pad, (m) => m.sampler.banks[bank][b].is_playing, (el, v) => el.classList.toggle('playing', !!v));
         pad.append(sel('Mode', MODES.map((x) => [x, label(x)]), (m) => m.sampler.banks[bank][b].function, (v) => cmd('SetSamplerFunction', bank, b, v)),
           seg('Order', ['Sequential', 'Random'], (m) => m.sampler.banks[bank][b].order, (v) => cmd('SetSamplerOrder', bank, b, v)),
-          dyn((s, m) => m.sampler.banks[bank][b].samples, (samples) => samples.map((smp, i) => h('div', { class: 'sample' },
+          dyn((s, m) => m.sampler.banks[bank][b].samples, (samples) => samples.length ? [h('div', { class: 'sample hd' }, h('span', { class: 'n' }, 'Sample'), h('span', {}, 'Start %'), h('span', {}, 'Stop %'), h('span', {})), ...samples.map((smp, i) => h('div', { class: 'sample' },
             h('span', { class: 'n', title: smp.name }, smp.name),
-            h('input', { type: 'number', min: 0, max: 100, step: 0.1, value: smp.start_pct, title: 'Start %', style: 'width:64px', onchange: (e) => cmd('SetSampleStartPercent', bank, b, i, +e.target.value) }),
-            h('input', { type: 'number', min: 0, max: 100, step: 0.1, value: smp.stop_pct, title: 'Stop %', style: 'width:64px', onchange: (e) => cmd('SetSampleStopPercent', bank, b, i, +e.target.value) }),
-            btn('Play', () => cmd('PlaySampleByIndex', bank, b, i)), btn('X', () => cmd('RemoveSampleByIndex', bank, b, i), 'danger')))),
+            h('input', { type: 'number', min: 0, max: 100, step: 0.1, value: smp.start_pct, title: 'Start %', onchange: (e) => cmd('SetSampleStartPercent', bank, b, i, +e.target.value) }),
+            h('input', { type: 'number', min: 0, max: 100, step: 0.1, value: smp.stop_pct, title: 'Stop %', onchange: (e) => cmd('SetSampleStopPercent', bank, b, i, +e.target.value) }),
+            h('span', { class: 'acts' }, btn('Play', () => cmd('PlaySampleByIndex', bank, b, i)), h('button', { class: 'b danger', title: 'Remove sample', 'aria-label': 'Remove sample', onclick: () => cmd('RemoveSampleByIndex', bank, b, i) }, '\u2715'))))] : h('p', { class: 'muted' }, 'No samples')),
           h('div', { class: 'row' }, dyn((s) => Object.keys(s.files.samples), (names) => sel(null, [['', 'Add sample...'], ...names.map((n) => [n, n])], () => '', (v) => v && cmd('AddSample', bank, b, v))),
             btn('Stop', () => cmd('StopSamplePlayback', bank, b))));
         pads.append(pad);
       }
       return pads;
     });
-    return h('div', { class: 'grid', style: 'grid-template-columns:1fr' },
+    return h('div', { class: 'grid', style: 'grid-template-columns:minmax(0,1fr)' },
+      dyn((s, m) => m.sampler.processing_state.last_error, (e) => e ? h('div', { class: 'alert', role: 'alert' }, h('span', {}, '\u26a0 Sample error: ' + e), btn('Dismiss', () => cmd('ClearSampleProcessError'))) : null),
       card('Sampler', seg('Bank', ['A', 'B', 'C'], (m) => m.sampler.active_bank, (v) => cmd('SetActiveSamplerBank', v)), body),
       card('Sampler settings', toggle('Reset on clear', (m) => m.settings.reset_sampler_on_clear, (v) => cmd('SetSamplerResetOnClear', v)),
         slider('Fade time', { min: 0, max: 5000, step: 50, get: (m) => m.settings.fade_duration, set: (v) => cmd('SetSamplerFadeDuration', v), fmt: (v) => v + ' ms' }),
         slider('Record buffer', { min: 0, max: 30000, step: 500, get: (m) => m.sampler.record_buffer, set: (v) => cmd('SetSamplerPreBufferDuration', v), fmt: (v) => v / 1000 + ' s' }),
-        dyn((s, m) => m.sampler.processing_state.last_error, (e) => e ? h('div', { class: 'row' }, h('span', { style: 'color:var(--danger)' }, e), btn('Dismiss', () => cmd('ClearSampleProcessError'))) : null)),
+      ),
       card('Sample files', dyn((s) => s.files.samples, (files) => Object.entries(files).map(([k, f]) => h('div', { class: 'row' },
-        h('label', { style: 'flex:1;color:var(--text)' }, f.name || k), h('audio', { controls: true, preload: 'none', src: '/files/samples/' + encodeURIComponent(k), style: 'height:30px' }),
-        h('input', { type: 'number', min: 0, max: 100, value: f.gain_pct, title: 'Gain %', style: 'width:70px', onchange: (e) => daemon('SetSampleGainPct', k, +e.target.value) }))))));
+        h('label', { style: 'flex:1;color:var(--text);min-width:100px' }, f.name || k), h('audio', { controls: true, preload: 'none', src: '/files/samples/' + encodeURIComponent(k) }),
+        h('label', { style: 'min-width:0;flex:0 0 auto;color:var(--mute)' }, 'Gain %'), h('input', { type: 'number', min: 0, max: 100, value: f.gain_pct, 'aria-label': 'Gain %', style: 'width:70px', onchange: (e) => daemon('SetSampleGainPct', k, +e.target.value) }))))));
   },
 
   lighting() {
     const m = mixer();
     const L = m.lighting;
     const hex = (c) => '#' + String(c).replace('#', '').padEnd(6, '0').slice(0, 6);
-    const colour = (get, set) => { const i = h('input', { type: 'color' }); i.addEventListener('change', () => set(i.value.slice(1).toUpperCase())); return bind(i, get, (el, v) => (el.value = hex(v))); };
+    const colour = (get, set) => { const i = h('input', { type: 'color', 'aria-label': 'Colour', title: 'Pick colour' }); i.addEventListener('change', () => set(i.value.slice(1).toUpperCase())); return bind(i, get, (el, v) => (el.value = hex(v))); };
     const cards = [];
     if (L.animation.supported) cards.push(card('Animation',
       seg('Mode', ['RetroRainbow', 'RainbowDark', 'RainbowBright', 'Simple', 'Ripple', 'None'], (m) => m.lighting.animation.mode, (v) => cmd('SetAnimationMode', v)),
@@ -378,19 +385,19 @@ const views = {
     if (Object.keys(L.encoders).length) cards.push(card('Encoders', ...Object.keys(L.encoders).map((e) => row(e, ...['colour_one', 'colour_two', 'colour_three'].map((k) => colour((m) => m.lighting.encoders[e][k], (v) => { const c = { ...mixer().lighting.encoders[e], [k]: v }; cmd('SetEncoderColour', e, c.colour_one, c.colour_two, c.colour_three); }))))));
     if (Object.keys(L.sampler).length) cards.push(card('Sampler banks', ...Object.keys(L.sampler).map((s) => row(label(s), ...['colour_one', 'colour_two', 'colour_three'].map((k) => colour((m) => m.lighting.sampler[s].colours[k], (v) => { const c = { ...mixer().lighting.sampler[s].colours, [k]: v }; cmd('SetSampleColour', s, c.colour_one, c.colour_two, c.colour_three); })),
       sel(null, ['Dimmed', 'Colour2', 'DimmedColour2'].map((o) => [o, label(o)]), (m) => m.lighting.sampler[s].off_style, (v) => cmd('SetSampleOffStyle', s, v))))));
-    return h('div', { class: 'grid' }, ...cards);
+    return h('div', { class: 'masonry' }, ...cards);
   },
 
   profiles() {
     const listCard = (title, filesKey, curKey, ops) => card(title,
       dyn((s, m) => [s.files[filesKey], m[curKey]], ([files, cur]) => files.map((n) => h('div', { class: 'row' },
-        h('label', { style: 'flex:1;color:var(--text);' + (n === cur ? 'font-weight:700;color:var(--accent)' : '') }, n),
-        btn('Load', () => ops.load(n)), btn('Delete', () => confirm(`Delete "${n}"?`) && ops.del(n), 'danger')))),
+        h('label', { style: 'flex:1;color:var(--text);min-width:0' }, n, n === cur ? h('span', { class: 'badge', style: 'margin-left:10px' }, 'Active') : null),
+        (() => { const l = btn('Load', () => ops.load(n)); l.disabled = n === cur; return l; })(), btn('Delete', () => confirm(`Delete "${n}"?`) && ops.del(n), 'danger')))),
       h('div', { class: 'row' }, btn('Save', ops.save), btn('Save as...', prompter('Save as', ops.saveAs)), btn('New...', prompter('New name', ops.create))));
     return h('div', { class: 'grid' },
       listCard('Profiles', 'profiles', 'profile_name', { load: (n) => cmd('LoadProfile', n, true), del: (n) => cmd('DeleteProfile', n), save: () => cmd('SaveProfile'), saveAs: (n) => cmd('SaveProfileAs', n), create: (n) => cmd('NewProfile', n) }),
       listCard('Mic profiles', 'mic_profiles', 'mic_profile_name', { load: (n) => cmd('LoadMicProfile', n, true), del: (n) => cmd('DeleteMicProfile', n), save: () => cmd('SaveMicProfile'), saveAs: (n) => cmd('SaveMicProfileAs', n), create: (n) => cmd('NewMicProfile', n) }),
-      card('Folders', ...['Profiles', 'MicProfiles', 'Presets', 'Samples', 'Icons', 'Logs', 'Backups'].map((p) => h('div', { class: 'row' }, h('label', { style: 'flex:1;color:var(--text)' }, p), btn('Open', () => daemon('OpenPath', p)), btn('Restore defaults', () => confirm(`Restore default ${p}?`) && daemon('RecoverDefaults', p), 'danger')))));
+      h('div', { class: 'card', style: 'grid-column:1/-1' }, h('h3', {}, 'Folders'), ...['Profiles', 'MicProfiles', 'Presets', 'Samples', 'Icons', 'Logs', 'Backups'].map((p) => h('div', { class: 'row' }, h('label', { style: 'flex:1;color:var(--text);min-width:0' }, p), btn('Open', () => daemon('OpenPath', p)), btn('Restore defaults', () => confirm(`Restore default ${p}?`) && daemon('RecoverDefaults', p))))));
   },
 
   settings() {
@@ -398,21 +405,22 @@ const views = {
     const dt = (label_, get, set) => h('div', { class: 'row' }, toggle(label_, get, set));
     const D = (k) => () => S.status.config[k];
     const hw = m.hardware;
-    return h('div', { class: 'grid' },
+    return h('div', { class: 'masonry' },
       card('Mixer', toggle('VC mute also mutes cough', (m) => m.settings.vc_mute_also_mute_cm, (v) => cmd('SetVCMuteAlsoMuteCM', v)),
         slider('Mute hold', { min: 0, max: 5000, step: 50, get: (m) => m.settings.mute_hold_duration, set: (v) => cmd('SetMuteHoldDuration', v), fmt: (v) => v + ' ms' }),
         seg('VOD mode', ['Routable', 'StreamNoMusic'], (m) => m.settings.vod_mode, (v) => cmd('SetVodMode', v)),
-        h('h3', { style: 'margin-top:14px' }, 'Hardware display mode'),
+        h('div', { class: 'sub' }, 'Hardware display mode'),
         ...[['NoiseGate', 'gate'], ['Equaliser', 'equaliser'], ['Compressor', 'compressor'], ['EqFineTune', 'equaliser_fine']].map(([c, k]) => seg(c, ['Simple', 'Advanced'], (m) => m.settings.display[k], (v) => cmd('SetElementDisplayMode', c, v)))),
       card('Daemon',
         dt('Show tray icon', D('show_tray_icon'), (v) => daemon('SetShowTrayIcon', v)),
         dt('Start on login', D('autostart_enabled'), (v) => daemon('SetAutoStartEnabled', v)),
         dt('Open UI on launch', D('open_ui_on_launch'), (v) => daemon('SetUiLaunchOnLoad', v)),
         dt('Allow network access', D('allow_network_access'), (v) => daemon('SetAllowNetworkAccess', v)),
+        h('p', { class: 'hint' }, 'Lets other computers on your network open this UI and control the mixer.'),
         S.status.config.tts_enabled !== null && S.status.config.tts_enabled !== undefined ? dt('Text to speech', D('tts_enabled'), (v) => daemon('SetTTSEnabled', v)) : null,
         sel('Log level', ['Off', 'Error', 'Warn', 'Info', 'Debug', 'Trace'], () => S.status.config.log_level, (v) => daemon('SetLogLevel', v)),
         sel('Firmware', [['Live', 'Live'], ['Beta', 'Beta']], () => S.status.config.firmware_source, (v) => daemon('SetFirmwareSource', v)),
-        h('div', { class: 'row' }, btn('Stop daemon', () => confirm('Stop the GoXLR daemon?') && daemon('StopDaemon'), 'danger'))),
+        h('div', { class: 'sub' }, 'Danger zone'), h('div', { class: 'row' }, btn('Stop daemon', () => confirm('Stop the GoXLR daemon?') && daemon('StopDaemon'), 'danger'))),
       card('Device', ...[['Model', hw.device_type], ['Serial', hw.serial_number], ['Manufactured', hw.manufactured_date], ['Firmware', hw.versions.firmware?.join?.('.') ?? JSON.stringify(hw.versions.firmware)], ['Daemon', S.status.config.daemon_version], ['Platform', S.status.config.platform]].map(([k, v]) => row(k, h('span', {}, String(v))))));
   },
 };
@@ -437,8 +445,8 @@ function pollMic(cb) {
 const SUN = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
 const MOON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
 const curTheme = () => document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-function themeButton() {
-  const b = h('button', { class: 'theme', title: 'Toggle dark mode', 'aria-label': 'Toggle dark mode' });
+function themeButton(extra = '') {
+  const b = h('button', { class: ('theme ' + extra).trim(), title: 'Toggle dark mode', 'aria-label': 'Toggle dark mode' });
   const paint = () => { b.innerHTML = (curTheme() === 'dark' ? SUN : MOON) + '<span>' + (curTheme() === 'dark' ? 'Light mode' : 'Dark mode') + '</span>'; };
   b.onclick = () => { const n = curTheme() === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = n; try { localStorage.setItem('theme', n); } catch { /* storage blocked */ } paint(); };
   paint();
@@ -451,8 +459,9 @@ function renderTop() {
   t.replaceChildren(...[
     h('h1', {}, NAV.find((n) => n[0] === S.view)[1]),
     m && Object.keys(m).length > 1 ? sel(null, Object.keys(m).map((s) => [s, `${m[s].hardware.device_type} ${s}`]), () => S.serial, (v) => { S.serial = v; render(); }) : null,
-    mixer() ? h('span', { class: 'muted' }, `${mixer().profile_name} / ${mixer().mic_profile_name}`) : null,
+    mixer() ? h('span', { class: 'muted' }, `Profile: ${mixer().profile_name}  \u00b7  Mic: ${mixer().mic_profile_name}`) : null,
     h('span', {}, h('i', { class: 'dot' + (S.online ? ' ok' : '') }), S.online ? 'Connected' : 'Offline'),
+    themeButton('top-theme'),
   ].filter(Boolean));
   document.querySelectorAll('#nav button[data-v]').forEach((b) => b.classList.toggle('on', b.dataset.v === S.view));
 }
@@ -465,6 +474,7 @@ function render() {
     ...NAV.map(([v, t]) => h('button', { 'data-v': v, onclick: () => { S.view = v; try { location.hash = v; } catch { /* ignore */ } render(); } }, t)),
     h('div', { class: 'sp' }), themeButton());
   renderTop();
+  nav.querySelector('button.on')?.scrollIntoView?.({ inline: 'center', block: 'nearest' });
   const view = $('#view');
   if (!S.status) return view.replaceChildren(h('div', { class: 'empty' }, 'Connecting to daemon...'));
   if (!mixer()) return view.replaceChildren(h('div', { class: 'empty' }, 'No GoXLR detected. Plug in a device.'));
