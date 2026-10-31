@@ -135,6 +135,12 @@ function sel(label, options, get, set) {
   return label ? row(label, s) : s;
 }
 function toggle(label, get, set, cls = '') {
+  if (!cls) {
+    const i = h('input', { type: 'checkbox' });
+    i.addEventListener('change', () => set(i.checked));
+    bind(i, get, (el, v) => (el.checked = !!v));
+    return h('label', { class: 'sw' }, i, h('span', { class: 'tr' }), label);
+  }
   const b = btn(label, () => set(!b.classList.contains('on')), cls);
   return bind(b, get, (el, v) => el.classList.toggle('on', !!v));
 }
@@ -198,11 +204,11 @@ const views = {
         toggle('Cough', (m) => m.cough_button.state !== 'Unmuted', () => cmd('SetCoughMuteState', mixer().cough_button.state === 'Unmuted' ? 'MutedToX' : 'Unmuted'), 'red'),
         slider('Bleep volume', { min: -34, max: 0, get: (m) => m.levels.bleep, set: (v) => cmd('SetSwearButtonVolume', v), fmt: (v) => v + ' dB' })),
       card('Faders', ...FADERS.map((f) => h('div', { class: 'row' },
-        h('label', {}, 'Fader ' + f),
+        h('label', { style: 'flex-basis:56px' }, f),
         sel(null, lopts(CHANNELS.slice(0, 8)), (m) => m.fader_status[f].channel, (v) => cmd('SetFader', f, v)),
-        sel(null, MUTE_FN.map((v) => [v, 'Mute: ' + label(v)]), (m) => m.fader_status[f].mute_type, (v) => cmd('SetFaderMuteFunction', f, v)))),
+        sel(null, MUTE_FN.map((v) => [v, label(v)]), (m) => m.fader_status[f].mute_type, (v) => cmd('SetFaderMuteFunction', f, v)))),
         toggle('Lock faders', (m) => m.settings.lock_faders, (v) => cmd('SetLockFaders', v))),
-      card('Scribbles', ...FADERS.map((f) => h('div', { class: 'row' },
+      h('div', { class: 'card', style: 'grid-column:1/-1' }, h('h3', {}, 'Scribbles'), ...FADERS.map((f) => h('div', { class: 'row' },
         h('img', { src: `/files/scribble/${S.serial}/${f}.png?${Date.now() % 1e6}`, width: 64, style: 'image-rendering:pixelated;background:#000', onerror: (e) => (e.target.style.display = 'none') }),
         dyn((st) => st.files.icons, (icons) => sel(null, [['', '(no icon)'], ...icons.map((i) => [i, i])], (m) => m.fader_status[f].scribble?.file_name ?? '', (v) => cmd('SetScribbleIcon', f, v || null))),
         txtInput('Top', (m) => m.fader_status[f].scribble?.left_text ?? '', (v) => cmd('SetScribbleNumber', f, v)),
@@ -236,7 +242,7 @@ const views = {
           ...outputs.map((o) => seg(label(o), ['A', 'B'], (m) => m.levels.submix.outputs[o], (v) => cmd('SetSubMixOutputMix', o, v))),
         ] : h('p', { class: 'muted' }, 'Disabled.'))));
     }
-    return h('div', { class: 'grid' }, ...cards);
+    return h('div', { class: 'grid first-wide' }, ...cards);
   },
 
   mic() {
@@ -283,7 +289,7 @@ const views = {
     const presets = ['Preset1', 'Preset2', 'Preset3', 'Preset4', 'Preset5', 'Preset6'];
     return h('div', { class: 'grid' },
       card('Presets', toggle('Effects on', (m) => m.effects.is_enabled, (v) => cmd('SetFXEnabled', v)),
-        seg(null, presets.map((p, i) => [p, String(i + 1)]), (m) => m.effects.active_preset, (v) => cmd('SetActiveEffectPreset', v)),
+        h('div', { class: 'row' }, seg(null, presets.map((p, i) => [p, String(i + 1)]), (m) => m.effects.active_preset, (v) => cmd('SetActiveEffectPreset', v))),
         dyn((s, m) => [m.effects.active_preset, m.effects.preset_names], () => h('p', { class: 'muted' }, 'Active: ' + (mixer().effects.preset_names[mixer().effects.active_preset] || ''))),
         h('div', { class: 'row' }, btn('Save', () => cmd('SaveActivePreset')), btn('Rename', prompter('New preset name', (n) => cmd('RenameActivePreset', n))),
           dyn((s) => s.files.presets, (p) => sel(null, [['', 'Load preset file...'], ...p.map((x) => [x, x])], () => '', (v) => v && cmd('LoadEffectPreset', v))))),
@@ -389,7 +395,7 @@ const views = {
 
   settings() {
     const m = mixer();
-    const dt = (label_, get, set) => h('div', { class: 'row' }, h('label', { style: 'flex:1;color:var(--text)' }, label_), (() => { const b = btn('', () => set(!b.classList.contains('on'))); b.append(h('span', {}, 'On')); return bind(b, () => 0, (el) => el.classList.toggle('on', !!get())); })());
+    const dt = (label_, get, set) => h('div', { class: 'row' }, toggle(label_, get, set));
     const D = (k) => () => S.status.config[k];
     const hw = m.hardware;
     return h('div', { class: 'grid' },
