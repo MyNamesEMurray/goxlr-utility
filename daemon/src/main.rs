@@ -390,7 +390,6 @@ async fn run_utility() -> Result<()> {
         shutdown_blocking,
 
         settings_handle: settings.clone(),
-        http_settings: http_settings.clone(),
     };
 
     // Spawn the general event handler..

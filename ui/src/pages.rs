@@ -1,7 +1,7 @@
 use crate::import::{self, ImportState};
 use crate::model::{C, hex_to_rgb, idx, opts, pretty};
 use crate::table;
-use goxlr_ipc::{DaemonStatus, MixerStatus, PathTypes};
+use goxlr_ipc::{DaemonStatus, MixerStatus, PathTypes, UpdateState};
 use goxlr_types::*;
 use strum::IntoEnumIterator;
 
@@ -39,7 +39,7 @@ pub fn tabs(page: u8) -> Vec<&'static str> {
         4 => vec!["Bank A", "Bank B", "Bank C", "Files"],
         5 => vec!["Animation", "Faders", "Buttons", "Other"],
         6 => vec!["Profiles", "Mic profiles", "Folders", "Import"],
-        7 => vec!["Mixer", "Daemon", "Device"],
+        7 => vec!["Mixer", "Daemon", "Firmware", "Device"],
         _ => vec![],
     }
 }
@@ -60,7 +60,7 @@ pub fn mixer(c: &Ctx) -> Vec<C> {
         C::slider(
             "mix.bleep",
             "Bleep volume",
-            -34.0,
+            -36.0,
             0.0,
             1.0,
             m.levels.bleep as f32,
@@ -319,8 +319,8 @@ pub fn sampler(c: &Ctx, tab: u8) -> Vec<C> {
                 "samp.fade",
                 "Fade time",
                 0.0,
-                5000.0,
-                50.0,
+                20000.0,
+                100.0,
                 c.m.settings.fade_duration as f32,
                 " ms",
             ),
@@ -462,7 +462,7 @@ pub fn lighting(c: &Ctx, tab: u8) -> Vec<C> {
                 "light.mod1",
                 "Modifier 1",
                 0.0,
-                255.0,
+                100.0,
                 1.0,
                 l.animation.mod1 as f32,
                 "",
@@ -471,7 +471,7 @@ pub fn lighting(c: &Ctx, tab: u8) -> Vec<C> {
                 "light.mod2",
                 "Modifier 2",
                 0.0,
-                255.0,
+                100.0,
                 1.0,
                 l.animation.mod2 as f32,
                 "",
@@ -653,6 +653,7 @@ pub fn settings(
     m: Option<&MixerStatus>,
     confirm: Option<&str>,
     tab: u8,
+    fw_file: &str,
 ) -> Vec<C> {
     let cfg = &st.config;
     match tab {
@@ -697,12 +698,19 @@ pub fn settings(
                 LOG_LEVELS.iter().map(|s| s.to_string()).collect(),
                 cfg.log_level_index(),
             ));
-            out.push(C::choice(
-                "d.fw",
-                "Firmware channel",
-                vec!["Live".into(), "Beta".into()],
-                cfg.firmware_index(),
+            if cfg.platform == "macos" {
+                out.push(C::toggle(
+                    "d.macagg",
+                    "Handle macOS aggregate devices",
+                    cfg.handle_macos_aggregates,
+                ));
+            }
+            out.push(C::field(
+                "d.locale",
+                "Language override",
+                cfg.locale.user_locale.as_deref().unwrap_or(""),
             ));
+            out.push(C::info("System language", &cfg.locale.system_locale));
             out.push(C::heading("Danger zone"));
             out.push(C::button(
                 "d.stop",
@@ -716,6 +724,7 @@ pub fn settings(
             ));
             out
         }
+        2 => firmware_rows(st, m, confirm, fw_file),
         _ => {
             let mut out = vec![
                 C::heading("Daemon"),
@@ -802,6 +811,106 @@ fn import_rows(c: &Ctx) -> Vec<C> {
     }
     if !s.msg.is_empty() {
         out.push(C::info("Result", &s.msg));
+    }
+    out
+}
+
+fn firmware_rows(
+    st: &DaemonStatus,
+    m: Option<&MixerStatus>,
+    confirm: Option<&str>,
+    fw_file: &str,
+) -> Vec<C> {
+    let Some(m) = m else {
+        return vec![C::note("No GoXLR detected.")];
+    };
+    let current = m.hardware.versions.firmware.to_string();
+    let latest = st
+        .config
+        .latest_firmware
+        .as_ref()
+        .and_then(|l| l[m.hardware.device_type].as_ref())
+        .map_or_else(|| "unknown".to_string(), |d| d.version.to_string());
+    let mut out = vec![
+        C::heading("Firmware"),
+        C::info("Installed", &current),
+        C::info("Latest available", &latest),
+        C::seg(
+            "d.fw",
+            "Update channel",
+            vec!["Live".into(), "Beta".into()],
+            st.config.firmware_index(),
+        ),
+    ];
+    let busy_label = |state: &UpdateState| match state {
+        UpdateState::Starting => "Starting",
+        UpdateState::Manifest => "Checking for firmware",
+        UpdateState::Download => "Downloading",
+        UpdateState::ClearNVR => "Preparing the device",
+        UpdateState::UploadFirmware => "Uploading",
+        UpdateState::ValidateUpload => "Checking the upload",
+        UpdateState::HardwareValidate => "Verifying on the device",
+        UpdateState::HardwareWrite => "Writing to the device",
+        _ => "",
+    };
+    match st.firmware.get(&m.hardware.serial_number) {
+        Some(f) if matches!(f.state, UpdateState::Complete) => {
+            out.push(C::info(
+                "Status",
+                "Update complete. The device is restarting.",
+            ));
+            out.push(C::button("fw.clear", "", "Dismiss", false));
+        }
+        Some(f) if matches!(f.state, UpdateState::Failed) => {
+            out.push(C::info("Status", "Update failed"));
+            out.push(C::info(
+                "Error",
+                f.error.as_deref().unwrap_or("unknown error"),
+            ));
+            out.push(C::button("fw.clear", "", "Dismiss", false));
+        }
+        Some(f) => {
+            if let UpdateState::Pause(info) = &f.state {
+                out.push(C::note(&format!("The firmware found ({}) is not newer than the one installed. Install it anyway?", info.version)));
+                out.push(C::button("fw.continue", "", "Install anyway", true));
+                out.push(C::button("fw.clear", "", "Cancel", false));
+            } else {
+                out.push(C::info(
+                    "Status",
+                    &format!("{} ({}%)", busy_label(&f.state), f.progress),
+                ));
+                out.push(C::note(
+                    "Do not unplug the device or close the utility until this finishes.",
+                ));
+            }
+        }
+        None => {
+            out.push(C::heading("Install"));
+            out.push(C::note(
+                "Do not unplug the device or close the utility during an update.",
+            ));
+            out.push(C::button(
+                "fw.update",
+                "Latest firmware",
+                if confirm == Some("fw.update") {
+                    "Confirm update?"
+                } else {
+                    "Download and install"
+                },
+                confirm == Some("fw.update"),
+            ));
+            out.push(C::field("fw.file", "Firmware file (.bin)", fw_file));
+            out.push(C::button(
+                "fw.install_file",
+                "",
+                if confirm == Some("fw.install_file") {
+                    "Confirm install?"
+                } else {
+                    "Install this file"
+                },
+                confirm == Some("fw.install_file"),
+            ));
+        }
     }
     out
 }

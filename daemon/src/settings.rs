@@ -71,7 +71,6 @@ impl SettingsHandle {
                 backup_directory: None,
                 log_level: Some(LogLevel::Debug),
                 open_ui_on_launch: None,
-                activate: None,
                 firmware_source: None,
                 devices: Some(Default::default()),
                 sample_gain: Some(Default::default()),
@@ -327,17 +326,6 @@ impl SettingsHandle {
     pub async fn set_open_ui_on_launch(&self, enable: bool) {
         let mut settings = self.settings.write().await;
         settings.open_ui_on_launch = Some(enable);
-    }
-
-    pub async fn get_activate(&self) -> Option<String> {
-        let settings = self.settings.read().await;
-        settings.activate.clone()
-    }
-
-    #[allow(dead_code)]
-    pub async fn set_activate(&self, activate: Option<String>) {
-        let mut settings = self.settings.write().await;
-        settings.activate = activate;
     }
 
     pub async fn get_device_profile_name(&self, device_serial: &str) -> Option<String> {
@@ -716,7 +704,6 @@ pub struct Settings {
     backup_directory: Option<PathBuf>,
     log_level: Option<LogLevel>,
     open_ui_on_launch: Option<bool>,
-    activate: Option<String>,
     firmware_source: Option<FirmwareSource>,
     devices: Option<HashMap<String, DeviceSettings>>,
     sample_gain: Option<HashMap<String, u8>>,

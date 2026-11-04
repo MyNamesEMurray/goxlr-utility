@@ -5,16 +5,16 @@ use crate::firmware::firmware_update::{
     FirmwareMessages, FirmwareRequest, FirmwareUpdateDevice, FirmwareUpdateSettings,
     do_firmware_update, start_firmware_update,
 };
-use crate::platform::{get_ui_app_path, has_autostart, set_autostart};
+use crate::platform::{has_autostart, set_autostart};
 use crate::{
     FIRMWARE_PATHS, FileManager, PatchEvent, SYSTEM_LOCALE, SettingsHandle, Shutdown, VERSION,
 };
 use anyhow::{Result, anyhow};
 use enum_map::EnumMap;
 use goxlr_ipc::{
-    Activation, ColourWay, DaemonCommand, DaemonConfig, DaemonStatus, DriverDetails, Files,
-    FirmwareSource, FirmwareStatus, GoXLRCommand, HardwareStatus, HttpSettings, Locale, PathTypes,
-    Paths, SampleFile, UpdateState, UsbProductInformation,
+    ColourWay, DaemonCommand, DaemonConfig, DaemonStatus, DriverDetails, Files, FirmwareSource,
+    FirmwareStatus, GoXLRCommand, HardwareStatus, HttpSettings, Locale, PathTypes, Paths,
+    SampleFile, UpdateState, UsbProductInformation,
 };
 use goxlr_types::{DeviceType, FirmwareDetails, VersionNumber};
 use goxlr_usb::device::base::GoXLRDevice;
@@ -34,7 +34,6 @@ use tokio::time::sleep;
 use xmltree::Element;
 
 const IGNORE_DEVICE_DURATION: Duration = Duration::from_secs(10);
-const APP_CHECK_INTERVAL: Duration = Duration::from_secs(30);
 
 // Adding a third entry has tripped enum_variant_names, I'll probably need to rename
 // RunDeviceCommand, but that'll need to be in a separate commit, for now, suppress.
@@ -106,14 +105,6 @@ pub async fn spawn_usb_handler(
     let update_sleep = sleep(update_duration);
     tokio::pin!(update_sleep);
 
-    // Timer for checking whether the UI App has appeared
-    let mut app_check: Option<String> = None;
-    get_app_path(&mut app_check);
-
-    let app_duration = APP_CHECK_INTERVAL;
-    let app_sleep = sleep(app_duration);
-    tokio::pin!(app_sleep);
-
     // Get the Driver Type and Details..
     let (interface, version) = get_version();
     let mut driver_interface = DriverDetails { interface, version };
@@ -132,7 +123,6 @@ pub async fn spawn_usb_handler(
         &firmware_version,
         &devices_firmware,
         files.clone(),
-        &app_check,
     )
     .await;
 
@@ -285,12 +275,6 @@ pub async fn spawn_usb_handler(
                     }
                 }
                 update_sleep.as_mut().reset(tokio::time::Instant::now() + update_duration);
-            },
-            () = &mut app_sleep => {
-                if get_app_path(&mut app_check) {
-                    change_found = true;
-                }
-                app_sleep.as_mut().reset(tokio::time::Instant::now() + APP_CHECK_INTERVAL);
             },
             Some(serial) = disconnect_receiver.recv() => {
                 info!("[{}] Device Disconnected", serial);
@@ -472,17 +456,6 @@ pub async fn spawn_usb_handler(
                                 change_found = true;
                                 let _ = sender.send(Ok(()));
                             }
-                            DaemonCommand::SetActivatorPath(path) => {
-                                if let Some(path) = path {
-                                    settings.set_activate(Some(path.to_string_lossy().to_string())).await;
-                                    settings.save().await;
-                                } else {
-                                    settings.set_activate(None).await;
-                                    settings.save().await;
-                                }
-                                change_found = true;
-                                let _ = sender.send(Ok(()));
-                            }
                             DaemonCommand::HandleMacOSAggregates(value) => {
                                 settings.set_macos_handle_aggregates(value).await;
                                 settings.save().await;
@@ -630,7 +603,6 @@ pub async fn spawn_usb_handler(
                 &firmware_version,
                 &devices_firmware,
                 files.clone(),
-                &app_check,
             )
             .await;
 
@@ -661,7 +633,6 @@ async fn get_daemon_status(
     firmware_versions: &Option<EnumMap<DeviceType, Option<FirmwareDetails>>>,
     firmware_state: &HashMap<String, FirmwareUpdateState>,
     files: Files,
-    app_check: &Option<String>,
 ) -> DaemonStatus {
     let mut status = DaemonStatus {
         config: DaemonConfig {
@@ -680,10 +651,6 @@ async fn get_daemon_status(
             log_level: settings.get_log_level().await,
             firmware_source: settings.get_firmware_source().await,
             open_ui_on_launch: settings.get_open_ui_on_launch().await,
-            activation: Activation {
-                active_path: settings.get_activate().await,
-                app_path: app_check.clone(),
-            },
             platform: env::consts::OS.to_string(),
             handle_macos_aggregates: settings.get_macos_handle_aggregates().await,
         },
@@ -712,36 +679,6 @@ async fn get_daemon_status(
     }
 
     status
-}
-
-#[allow(const_item_mutation)]
-fn get_app_path(app_check: &mut Option<String>) -> bool {
-    if let Some(path) = get_ui_app_path() {
-        let mut changed = false;
-
-        // We need to escape the value..
-        let wrap = if cfg!(windows) { "\"" } else { "'" };
-        let path = format!("{}{}{}", wrap, path.to_string_lossy(), wrap);
-
-        if let Some(old_path) = app_check {
-            if *old_path != path {
-                app_check.replace(path);
-                changed = true;
-            }
-        } else {
-            app_check.replace(path);
-            changed = true
-        }
-
-        changed
-    } else {
-        let mut changed = false;
-        if app_check.is_some() {
-            changed = true;
-        }
-        app_check.take();
-        changed
-    }
 }
 
 async fn get_sample_files(

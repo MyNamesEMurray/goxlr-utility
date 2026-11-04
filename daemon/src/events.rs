@@ -3,7 +3,7 @@
 
 use crate::primary_worker::DeviceStateChange;
 use crate::{SettingsHandle, Shutdown};
-use goxlr_ipc::{HttpSettings, PathTypes};
+use goxlr_ipc::PathTypes;
 use log::{debug, warn};
 use std::process::{Command, Stdio};
 use std::sync::Arc;
@@ -30,7 +30,6 @@ pub enum EventTriggers {
 #[derive(Clone)]
 pub struct DaemonState {
     pub show_tray: Arc<AtomicBool>,
-    pub http_settings: HttpSettings,
 
     // TTS Output
     pub tts_sender: Sender<String>,
@@ -113,87 +112,10 @@ pub async fn spawn_event_handler(
                             warn!("Error Opening Path: {:?}", error);
                         };
                     },
-                    EventTriggers::OpenUi => {
-                        if let Err(error) = open_default(&get_util_url(&state)) {
-                            warn!("Error Opening URL: {:?}", error);
+                    EventTriggers::OpenUi | EventTriggers::Activate => {
+                        if let Err(error) = launch_native_ui() {
+                            warn!("Error Opening UI: {:?}", error);
                         }
-                    },
-                    EventTriggers::Activate => {
-                        let activate = state.settings_handle.get_activate().await;
-                        let url = get_util_url(&state);
-
-                        // Use the temp directory as the runtime for any launched apps..
-                        let tmp_dir = std::env::temp_dir();
-
-                        #[cfg(not(unix))]
-                        {
-                            use windows_args;
-                            match activate {
-                                Some(exec) => {
-                                    // Ok, we're going to force the app runtime into %TMP%, to
-                                    // prevent situations where it may need to write files.
-
-
-                                    let exec = exec.replace("%URL%", &url);
-                                    let mut args = windows_args::Args::parse_cmd(&exec);
-                                    if let Some(command) = args.next() {
-                                        let result = Command::new(command)
-                                            .current_dir(tmp_dir)
-                                            .args(args)
-                                            .stdout(Stdio::null())
-                                            .stderr(Stdio::null())
-                                            .spawn();
-
-                                        if let Err(error) = result {
-                                            warn!("Error Executing command: {:?}, falling back", error);
-                                            if let Err(error) = open_default(&url) {
-                                                warn!("Error Opening URL: {:?}", error);
-                                            }
-                                        }
-                                    }
-                                },
-                                None => {
-                                    if let Err(error) = open_default(&url) {
-                                        warn!("Error Opening URL: {:?}", error);
-                                    }
-                                }
-                            }
-                        }
-
-                        #[cfg(unix)]
-                        {
-                            use shell_words;
-                            match activate {
-                                Some(exec) => {
-                                    let exec = exec.replace("%URL%", &url);
-                                    if let Ok(params) = shell_words::split(&exec) {
-                                        debug!("Attempting to Execute: {:?}", params);
-                                        let result = Command::new(&params[0])
-                                            .current_dir(tmp_dir)
-                                            .args(&params[1..])
-                                            .stdout(Stdio::null())
-                                            .stderr(Stdio::null())
-                                            .spawn();
-
-                                        if let Err(error) = result {
-                                            warn!("Error Executing command: {:?}, falling back", error);
-                                            if let Err(error) = open_default(&url) {
-                                                warn!("Error Opening URL: {:?}", error);
-                                            }
-                                        }
-
-                                    } else if let Err(error) = open_default(&url) {
-                                        warn!("Error Opening URL: {:?}", error);
-                                    }
-                                },
-                                None => {
-                                    if let Err(error) = open_default(&url) {
-                                        warn!("Error Opening URL: {:?}", error);
-                                    }
-                                }
-                            }
-                        }
-
                     }
                 }
             },
@@ -201,43 +123,31 @@ pub async fn spawn_event_handler(
     }
 }
 
-fn launch_native_ui() -> bool {
-    let Ok(exe) = std::env::current_exe() else {
-        return false;
-    };
+fn launch_native_ui() -> std::io::Result<()> {
     let name = if cfg!(windows) {
         "goxlr-ui.exe"
     } else {
         "goxlr-ui"
     };
-    let Some(path) = exe.parent().map(|d| d.join(name)) else {
-        return false;
-    };
-    path.exists()
-        && Command::new(path)
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()
-            .is_ok()
-}
+    let path = std::env::current_exe()?
+        .parent()
+        .map(|d| d.join(name))
+        .filter(|p| p.exists())
+        .ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "goxlr-ui was not found next to the daemon",
+            )
+        })?;
 
-fn open_default(_url: &str) -> std::io::Result<()> {
-    if launch_native_ui() {
-        return Ok(());
-    }
-    Err(std::io::Error::new(
-        std::io::ErrorKind::NotFound,
-        "goxlr-ui was not found next to the daemon",
-    ))
-}
+    let mut child = Command::new(path)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()?;
 
-fn get_util_url(state: &DaemonState) -> String {
-    let mut host = String::from("localhost");
-    if state.http_settings.bind_address != "localhost"
-        && &state.http_settings.bind_address != "0.0.0.0"
-    {
-        host.clone_from(&state.http_settings.bind_address);
-    }
-
-    format!("http://{}:{}/", host, state.http_settings.port)
+    // Reap the child when it exits (a second launch exits straight away), otherwise it lingers as a zombie.
+    std::thread::spawn(move || {
+        let _ = child.wait();
+    });
+    Ok(())
 }

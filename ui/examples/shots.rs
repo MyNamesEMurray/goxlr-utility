@@ -36,7 +36,8 @@ fn main() {
     let ui = AppWindow::new().unwrap();
     let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
     wire(&ui, tx);
-    let st: DaemonStatus = serde_json::from_str(include_str!("mock.json")).expect("mock json");
+    let st: DaemonStatus =
+        serde_json::from_str(include_str!("../tests/mock.json")).expect("mock json");
     let (w, h) = (1180u32, 800u32);
     window.set_size(PhysicalSize::new(w, h));
     ui.show().unwrap();
@@ -52,7 +53,7 @@ fn main() {
         &[0, 3],
         &[0, 1, 2, 3],
         &[0, 1, 2, 3],
-        &[0, 1, 2],
+        &[0, 1, 2, 3],
     ];
     for dark in [true, false] {
         ui.global::<Theme>().set_dark(dark);

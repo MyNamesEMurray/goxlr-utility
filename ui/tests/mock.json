@@ -1168,8 +1168,8 @@
   }
  },
  "paths": {
-  "profile_directory": "/tmp/fx/p",
-  "mic_profile_directory": "/tmp/fx/m",
+  "profile_directory": "/tmp",
+  "mic_profile_directory": "/tmp",
   "samples_directory": "/tmp",
   "presets_directory": "/tmp",
   "icons_directory": "/tmp",

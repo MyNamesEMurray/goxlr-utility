@@ -31,7 +31,6 @@ pub struct DaemonConfig {
     pub driver_interface: DriverDetails,
     pub latest_firmware: Option<EnumMap<DeviceType, Option<FirmwareDetails>>>,
     pub locale: Locale,
-    pub activation: Activation,
     pub autostart_enabled: bool,
     pub show_tray_icon: bool,
     pub tts_enabled: Option<bool>,
@@ -53,12 +52,6 @@ pub struct DriverDetails {
 pub struct Locale {
     pub user_locale: Option<String>,
     pub system_locale: String,
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Activation {
-    pub active_path: Option<String>,
-    pub app_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

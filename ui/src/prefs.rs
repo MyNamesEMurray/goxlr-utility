@@ -30,3 +30,19 @@ pub fn save(dark: bool) {
         let _ = std::fs::write(p, format!("dark={}\n", dark as u8));
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn theme_choice_survives_a_restart() {
+        let dir = std::env::temp_dir().join(format!("goxlr-prefs-{}", std::process::id()));
+        // Only this test reads the config location, so changing it for the process is safe.
+        unsafe { std::env::set_var("XDG_CONFIG_HOME", &dir) };
+        save(false);
+        assert!(!load());
+        save(true);
+        assert!(load());
+    }
+}

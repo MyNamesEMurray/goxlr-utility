@@ -8,7 +8,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-goxlr-ipc = { path = "../ipc" }
+goxlr-ipc = { path = "../ipc", default-features = false }
 
 # Common Workspace
 anyhow = { workspace = true }

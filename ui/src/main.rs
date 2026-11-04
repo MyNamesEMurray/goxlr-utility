@@ -1,13 +1,15 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use goxlr_ui::{AppWindow, backend, wire};
+use goxlr_ui::{AppWindow, backend, instance, wire};
 use slint::ComponentHandle;
 
 fn main() -> Result<(), slint::PlatformError> {
     // A second launch just exits, the existing window stays.
-    let Ok(_guard) = std::net::TcpListener::bind(("127.0.0.1", 14599)) else {
+    if instance::already_running("goxlr-ui") {
         return Ok(());
-    };
+    }
+    let _lock = instance::take_lock("goxlr-ui");
+
     let ui = AppWindow::new()?;
     ui.global::<goxlr_ui::Theme>()
         .set_dark(goxlr_ui::prefs::load());

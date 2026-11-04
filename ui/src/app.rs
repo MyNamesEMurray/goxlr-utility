@@ -4,7 +4,8 @@ use crate::pages::{self, Ctx, LOG_LEVELS, PATHS};
 use crate::table;
 use crate::{AppWindow, Ctl, Strip};
 use goxlr_ipc::{
-    DaemonCommand, DaemonStatus, FirmwareSource, GoXLRCommand as G, LogLevel, MixerStatus,
+    DaemonCommand, DaemonRequest, DaemonStatus, FirmwareSource, GoXLRCommand as G, LogLevel,
+    MixerStatus,
 };
 use goxlr_types::*;
 use slint::{ComponentHandle, Model, ModelRc, SharedString, Timer, TimerMode, VecModel, Weak};
@@ -16,11 +17,16 @@ use tokio::sync::mpsc::UnboundedSender;
 
 type Matrix = (Vec<String>, Vec<String>, Vec<Vec<i32>>);
 
+#[derive(Debug)]
 pub enum Msg {
     Cmd(String, G),
     Daemon(DaemonCommand),
+    Request(DaemonRequest),
     Mic(Option<String>),
 }
+
+/// Actions that need a second click to confirm before they run.
+const CONFIRM_KEYS: [&str; 3] = ["d.stop", "fw.update", "fw.install_file"];
 
 const HOLD: Duration = Duration::from_millis(450);
 
@@ -42,6 +48,7 @@ pub struct App {
     apply_timer: Timer,
     imp: ImportState,
     imp_init: bool,
+    fw_file: String,
 }
 
 fn fader_by_name(s: &str) -> Option<FaderName> {
@@ -76,6 +83,7 @@ impl App {
             apply_timer: Timer::default(),
             imp: ImportState::default(),
             imp_init: false,
+            fw_file: String::new(),
             models,
         };
         ui.set_mixer_ctls(app.models[0].clone().into());
@@ -201,7 +209,9 @@ impl App {
         let mut strips: Option<Vec<Strip>> = None;
         let mut matrix: Option<Matrix> = None;
         let rows: Vec<C> = match m {
-            None if page == 7 => pages::settings(st, None, self.confirm.as_deref(), tab),
+            None if page == 7 => {
+                pages::settings(st, None, self.confirm.as_deref(), tab, &self.fw_file)
+            }
             None => vec![C::note(
                 "No GoXLR detected. Plug in a device and it will appear here.",
             )],
@@ -242,7 +252,7 @@ impl App {
                     4 => pages::sampler(&c, tab),
                     5 => pages::lighting(&c, tab),
                     6 => pages::profiles(&c, tab),
-                    _ => pages::settings(st, Some(m), self.confirm.as_deref(), tab),
+                    _ => pages::settings(st, Some(m), self.confirm.as_deref(), tab, &self.fw_file),
                 }
             }
         };
@@ -447,7 +457,7 @@ impl App {
     }
 
     pub fn event(&mut self, key: &str, value: f32, text: &str) {
-        let confirmable = key.ends_with("|1") || key == "d.stop";
+        let confirmable = key.ends_with("|1") || CONFIRM_KEYS.contains(&key);
         if confirmable {
             if self.confirm.as_deref() != Some(key) {
                 self.confirm = Some(key.to_string());
@@ -631,6 +641,30 @@ impl App {
                 }
                 None
             }
+            ["fw", what] => {
+                if let Some(serial) = self.serial.clone() {
+                    let req = match *what {
+                        "update" => Some(DaemonRequest::RunFirmwareUpdate(serial, None, false)),
+                        "install_file" if !self.fw_file.trim().is_empty() => {
+                            Some(DaemonRequest::RunFirmwareUpdate(
+                                serial,
+                                Some(std::path::PathBuf::from(self.fw_file.trim())),
+                                false,
+                            ))
+                        }
+                        "continue" => Some(DaemonRequest::ContinueFirmwareUpdate(serial)),
+                        "clear" => Some(DaemonRequest::ClearFirmwareState(serial)),
+                        _ => None,
+                    };
+                    if let Some(req) = req {
+                        let _ = self.tx.send(Msg::Request(req));
+                    }
+                }
+                if *what == "file" {
+                    self.fw_file = text.trim().to_string();
+                }
+                None
+            }
             ["d", what] => {
                 let c = match *what {
                     "tray" => Some(DaemonCommand::SetShowTrayIcon(b)),
@@ -654,6 +688,13 @@ impl App {
                         FirmwareSource::Live
                     })),
                     "stop" => Some(DaemonCommand::StopDaemon),
+                    "macagg" => Some(DaemonCommand::HandleMacOSAggregates(b)),
+                    "locale" => {
+                        let t = text.trim();
+                        Some(DaemonCommand::SetLocale(
+                            (!t.is_empty()).then(|| t.to_string()),
+                        ))
+                    }
                     _ => None,
                 };
                 if let Some(c) = c {

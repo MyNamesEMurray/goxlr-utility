@@ -83,8 +83,8 @@ The Utility ships with `goxlr-ui`, a native desktop app (built with [Slint](http
 browser or web engine). It talks to the running daemon over the local IPC socket. Open it from the tray icon or the
 `GoXLR Utility` menu item; the daemon starts it from the `goxlr-ui` binary installed next to the daemon executable.
 
-It covers the mixer, routing and sub mix, microphone gate / compressor / EQ, effects, sampler, lighting, profiles and
-daemon settings. The dark/light choice is remembered.
+It covers the mixer, routing and sub mix, microphone gate / compressor / EQ, effects, sampler, lighting, profiles,
+firmware updates and daemon settings. The dark/light choice is remembered.
 
 ```
 cargo run --release -p goxlr-ui

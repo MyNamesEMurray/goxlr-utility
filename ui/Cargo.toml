@@ -17,7 +17,7 @@ name = "goxlr-ui"
 path = "src/main.rs"
 
 [dependencies]
-goxlr-ipc = { path = "../ipc" }
+goxlr-ipc = { path = "../ipc", default-features = false }
 goxlr-types = { path = "../types", features = ["serde"] }
 
 slint = { version = "1.18", default-features = false, features = ["std", "backend-winit", "renderer-software", "software-renderer-systemfonts", "compat-1-2"] }
@@ -27,7 +27,6 @@ tokio = { workspace = true }
 interprocess = { workspace = true }
 serde_json = { workspace = true }
 strum = { workspace = true }
-enum-map = { workspace = true }
 
 [build-dependencies]
 slint-build = "1.18"

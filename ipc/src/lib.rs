@@ -126,7 +126,6 @@ pub enum DaemonCommand {
     SetAllowNetworkAccess(bool),
     SetUiLaunchOnLoad(bool),
     RecoverDefaults(PathTypes),
-    SetActivatorPath(Option<PathBuf>),
 
     SetSampleGainPct(String, u8),
     ApplySampleChange,

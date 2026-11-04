@@ -1,6 +1,7 @@
 pub mod app;
 pub mod backend;
 pub mod import;
+pub mod instance;
 pub mod model;
 pub mod pages;
 pub mod prefs;

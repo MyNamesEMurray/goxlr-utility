@@ -25,11 +25,16 @@ pub async fn connect() -> Result<LocalSocketStream> {
 pub type Sock = Socket<DaemonResponse, DaemonRequest>;
 
 pub async fn request(sock: &mut Sock, req: DaemonRequest) -> Result<DaemonResponse> {
-    sock.send(req).await?;
-    sock.read()
-        .await
-        .ok_or_else(|| anyhow!("daemon closed the connection"))?
-        .map_err(Into::into)
+    // A daemon that stops answering must not freeze the UI: give up so the loop reconnects.
+    tokio::time::timeout(Duration::from_secs(3), async {
+        sock.send(req).await?;
+        sock.read()
+            .await
+            .ok_or_else(|| anyhow!("daemon closed the connection"))?
+            .map_err(anyhow::Error::from)
+    })
+    .await
+    .map_err(|_| anyhow!("daemon did not answer in time"))?
 }
 
 fn ui_call(f: impl FnOnce(&mut crate::app::App) + Send + 'static) {
@@ -95,6 +100,7 @@ async fn run(mut rx: UnboundedReceiver<Msg>) {
                     let req = match msg {
                         Msg::Cmd(serial, c) => DaemonRequest::Command(serial, c),
                         Msg::Daemon(c) => DaemonRequest::Daemon(c),
+                        Msg::Request(r) => r,
                         Msg::Mic(m) => { mic = m; continue; }
                     };
                     match request(&mut sock, req).await {

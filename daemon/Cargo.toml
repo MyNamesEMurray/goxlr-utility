@@ -14,7 +14,7 @@ tts = ["dep:tts"]
 
 [dependencies]
 goxlr-usb = { path = "../usb" }
-goxlr-ipc = { path = "../ipc" }
+goxlr-ipc = { path = "../ipc", default-features = false }
 goxlr-types = { path = "../types" }
 goxlr-audio = { path = "../audio" }
 goxlr-profile-loader = { path = "../profile" }
@@ -36,7 +36,6 @@ clap = { workspace = true }
 cfg-if = { workspace = true }
 lazy_static = { workspace = true }
 fancy-regex = { workspace = true }
-which = { workspace = true }
 
 # Log File Handline
 simplelog = "0.12.2"
@@ -88,7 +87,6 @@ nix = { workspace = true, features = ["user"] }
 [target.'cfg(target_os = "linux")'.dependencies]
 ksni = "0.3.3"
 rust-ini = "0.21.0"
-shell-words = "1.1.0"
 zbus = "5.11.0"
 
 # Under Windows and MacOS, we use tao's tray feature
@@ -98,7 +96,6 @@ sysinfo = { workspace = true }
 winrt-toast-reborn = "0.3.8"
 mslnk = "0.1.8"
 dunce = "1.0.5"
-windows-args = "0.2.0"
 
 winreg = { workspace = true }
 windows = { workspace = true, features = [
@@ -114,7 +111,6 @@ windows = { workspace = true, features = [
 
 [target.'cfg(target_os = "macos")'.dependencies]
 image = { workspace = true }
-shell-words = "1.1.0"
 
 # Used for Tray Handling
 objc2-app-kit = "0.3.0"

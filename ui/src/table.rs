@@ -3,10 +3,14 @@ use goxlr_ipc::{GoXLRCommand as G, MixerStatus};
 use goxlr_types::*;
 use std::sync::LazyLock;
 
+/// Min and max for sliders whose limits depend on the current effect style.
+pub type RangeFn = fn(&MixerStatus) -> (f32, f32);
+
 pub enum K {
     Slider {
         min: f32,
         max: f32,
+        range: Option<RangeFn>,
         unit: &'static str,
         get: fn(&MixerStatus) -> f32,
         set: fn(&MixerStatus, f32) -> G,
@@ -43,6 +47,27 @@ macro_rules! slider {
             k: K::Slider {
                 min: $min as f32,
                 max: $max as f32,
+                range: None,
+                unit: $unit,
+                get: $get,
+                set: $set,
+            },
+        }
+    };
+}
+
+macro_rules! slider_dyn {
+    ($p:expr, $t:expr, $sec:expr, $key:expr, $label:expr, $range:expr, $unit:expr, $get:expr, $set:expr) => {
+        Row {
+            page: $p,
+            tab: $t,
+            sec: $sec,
+            key: $key,
+            label: $label,
+            k: K::Slider {
+                min: 0.0,
+                max: 0.0,
+                range: Some($range),
                 unit: $unit,
                 get: $get,
                 set: $set,
@@ -91,6 +116,30 @@ macro_rules! fx {
 
 macro_rules! fxb {
     ($($p:tt)+) => { |m: &MixerStatus| m.effects.as_ref().is_some_and(|e| e.current.$($p)+) };
+}
+
+fn pitch_range(m: &MixerStatus) -> (f32, f32) {
+    let Some(e) = &m.effects else {
+        return (-24.0, 24.0);
+    };
+    if e.current.hard_tune.is_enabled {
+        let limit = if e.current.pitch.style == PitchStyle::Wide {
+            2.0
+        } else {
+            1.0
+        };
+        return (-limit, limit);
+    }
+    (-24.0, 24.0)
+}
+
+fn gender_range(m: &MixerStatus) -> (f32, f32) {
+    let limit = match m.effects.as_ref().map(|e| e.current.gender.style) {
+        Some(GenderStyle::Medium) => 25.0,
+        Some(GenderStyle::Wide) => 50.0,
+        _ => 12.0,
+    };
+    (-limit, limit)
 }
 
 pub const MIC: u8 = 2;
@@ -207,7 +256,7 @@ pub static ROWS: LazyLock<Vec<Row>> = LazyLock::new(|| {
             "",
             "comp.makeup",
             "Makeup gain",
-            0,
+            -6,
             24,
             " dB",
             |m| m.mic_status.compressor.makeup_gain as f32,
@@ -449,7 +498,7 @@ pub static ROWS: LazyLock<Vec<Row>> = LazyLock::new(|| {
             "fx.echo.dl",
             "Delay left",
             0,
-            2000,
+            2500,
             " ms",
             fx!(echo.delay_left),
             |_, v| G::SetEchoDelayLeft(v as u16)
@@ -461,7 +510,7 @@ pub static ROWS: LazyLock<Vec<Row>> = LazyLock::new(|| {
             "fx.echo.dr",
             "Delay right",
             0,
-            2000,
+            2500,
             " ms",
             fx!(echo.delay_right),
             |_, v| G::SetEchoDelayRight(v as u16)
@@ -528,14 +577,13 @@ pub static ROWS: LazyLock<Vec<Row>> = LazyLock::new(|| {
                 .map_or(PitchStyle::Narrow, |e| e.current.pitch.style),
             G::SetPitchStyle
         ),
-        slider!(
+        slider_dyn!(
             FX,
             3,
             "",
             "fx.pitch.amount",
             "Amount",
-            -24,
-            24,
+            pitch_range,
             "",
             fx!(pitch.amount),
             |_, v| G::SetPitchAmount(v as i8)
@@ -566,14 +614,13 @@ pub static ROWS: LazyLock<Vec<Row>> = LazyLock::new(|| {
                 .map_or(GenderStyle::Narrow, |e| e.current.gender.style),
             G::SetGenderStyle
         ),
-        slider!(
+        slider_dyn!(
             FX,
             4,
             "",
             "fx.gender.amount",
             "Amount",
-            -24,
-            24,
+            gender_range,
             "",
             fx!(gender.amount),
             |_, v| G::SetGenderAmount(v as i8)
@@ -679,7 +726,7 @@ pub static ROWS: LazyLock<Vec<Row>> = LazyLock::new(|| {
             "fx.robot.lw",
             "Width",
             0,
-            88,
+            32,
             "",
             fx!(robot.low_width),
             |_, v| G::SetRobotWidth(RobotRange::Low, v as u8)
@@ -702,8 +749,8 @@ pub static ROWS: LazyLock<Vec<Row>> = LazyLock::new(|| {
             "",
             "fx.robot.mf",
             "Frequency",
-            0,
-            88,
+            86,
+            184,
             "",
             fx!(robot.mid_freq),
             |_, v| G::SetRobotFreq(RobotRange::Medium, v as u8)
@@ -715,7 +762,7 @@ pub static ROWS: LazyLock<Vec<Row>> = LazyLock::new(|| {
             "fx.robot.mw",
             "Width",
             0,
-            88,
+            32,
             "",
             fx!(robot.mid_width),
             |_, v| G::SetRobotWidth(RobotRange::Medium, v as u8)
@@ -738,8 +785,8 @@ pub static ROWS: LazyLock<Vec<Row>> = LazyLock::new(|| {
             "",
             "fx.robot.hf",
             "Frequency",
-            0,
-            88,
+            182,
+            240,
             "",
             fx!(robot.high_freq),
             |_, v| G::SetRobotFreq(RobotRange::High, v as u8)
@@ -751,7 +798,7 @@ pub static ROWS: LazyLock<Vec<Row>> = LazyLock::new(|| {
             "fx.robot.hw",
             "Width",
             0,
-            88,
+            32,
             "",
             fx!(robot.high_width),
             |_, v| G::SetRobotWidth(RobotRange::High, v as u8)
@@ -763,7 +810,7 @@ pub static ROWS: LazyLock<Vec<Row>> = LazyLock::new(|| {
             "fx.robot.wave",
             "Waveform",
             0,
-            2,
+            3,
             "",
             fx!(robot.waveform),
             |_, v| G::SetRobotWaveform(v as u8)
@@ -926,10 +973,14 @@ pub fn build(page: u8, tab: u8, m: &MixerStatus) -> Vec<C> {
             K::Slider {
                 min,
                 max,
+                range,
                 unit,
                 get,
                 ..
-            } => C::slider(r.key, r.label, *min, *max, 1.0, get(m), unit),
+            } => {
+                let (lo, hi) = range.map_or((*min, *max), |f| f(m));
+                C::slider(r.key, r.label, lo, hi, 1.0, get(m), unit)
+            }
             K::Toggle { get, .. } => C::toggle(r.key, r.label, get(m)),
             K::Choice { seg, opts, get, .. } => {
                 if *seg {
